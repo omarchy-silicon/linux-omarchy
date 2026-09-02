@@ -55,11 +55,12 @@ Design invariants
 Canonical manifest contract and the F-02 dependency
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-F-02 is the platform-manifest acceptance slice. It has not been accepted at
-this reviewed tip. K-01 consumes the frozen F-02 contract and does not define
-a parallel manifest, registry, owner registry, or digest authority. Until an
-accepted, signed F-02 schema revision and its signed context exist, K-01 is
-``FAIL_CLOSED`` and cannot be reported as PASS, DONE, or implementation-ready.
+F-02 is the platform-manifest acceptance slice. The supplied F-02 snapshot is
+rejected and frozen, not accepted authority. K-01 references its provisional
+typed paths as an external dependency and does not define a parallel manifest,
+registry, owner registry, or digest authority. Until an accepted, signed F-02
+schema revision and its signed context exist, K-01 is ``FAIL_CLOSED`` and
+cannot be reported as PASS, DONE, or implementation-ready.
 
 Every authenticated object is strict UTF-8 closed JSON under the one common
 ``omarchy-signed/v1`` envelope. The envelope has exactly ``format``,
@@ -89,7 +90,7 @@ The authoritative K-01 manifest paths are under
 paths below are the complete K-01 closure. A path not listed here cannot
 override one that is listed.
 
-.. list-table:: Frozen platform-manifest/v1 paths consumed by K-01
+.. list-table:: Provisional F-02 platform-manifest/v1 paths referenced by K-01
    :header-rows: 1
    :widths: 35 50 15
 
@@ -116,62 +117,84 @@ override one that is listed.
        ``Trusted<PlatformManifest>.payload.minimum_consumer_api``
      - Explicit board targets, registry/schema identity, qualification
        bindings, and consumer compatibility are required.
-   * - Manifest identity and board identity
-     - ``Trusted<PlatformManifest>.payload.board_id``;
-       ``Trusted<PlatformManifest>.payload.identity_match``
-     - Board selection uses one complete typed identity match.
-   * - Identity compatible tuple
-     - ``Trusted<PlatformManifest>.payload.identity_match.ordered_linux_compatible``;
-       ``Trusted<PlatformManifest>.payload.identity_match.soc_compatible``;
-       ``Trusted<PlatformManifest>.payload.identity_match.product_model``;
-       ``Trusted<PlatformManifest>.payload.identity_match.firmware_identity``;
-       ``Trusted<PlatformManifest>.payload.identity_match.provenance``
-     - All five source values agree exactly; no inference from one token.
+   * - Manifest target and board identity
+     - ``Trusted<PlatformManifest>.payload.board_registry_digest``;
+       ``Trusted<PlatformManifest>.payload.board_targets[]``;
+       ``Trusted<BoardRegistry>.payload.boards[].board_id``;
+       ``Trusted<BoardRegistry>.payload.boards[].identity_match``;
+       ``Trusted<BoardRegistry>.payload.boards[].soc.soc_id``;
+       ``Trusted<BoardRegistry>.payload.boards[].firmware.bundle_id``;
+       ``Trusted<BoardRegistry>.payload.boards[].firmware.firmware_schema_id``
+     - The registry digest resolves each explicit target to one complete
+       registry record; the manifest has no local ``board_id`` or
+       ``identity_match`` authority.
+   * - Linux identity predicates
+     - ``Trusted<BoardRegistry>.payload.boards[].identity_match.macos``;
+       ``Trusted<BoardRegistry>.payload.boards[].identity_match.linux.compatible[]``;
+       ``Trusted<BoardRegistry>.payload.boards[].identity_match.linux.model``
+     - The complete closed registry predicate is compared; no ordered tuple,
+       SoC token, product name, firmware token, or provenance inference fills a
+       missing member.
    * - Linux source and provenance
-     - ``Trusted<PlatformManifest>.payload.components.linux_kernel.source_patch_queue``
-     - One closed source/patch-queue record defined below.
+     - ``Trusted<PlatformManifest>.payload.components.linux_kernel.source.source_kind``;
+       ``Trusted<PlatformManifest>.payload.components.linux_kernel.source.repository_id``;
+       ``Trusted<PlatformManifest>.payload.components.linux_kernel.source.source_commit``;
+       ``Trusted<PlatformManifest>.payload.components.linux_kernel.source.upstream_commit``;
+       ``Trusted<PlatformManifest>.payload.components.linux_kernel.source.source_digest``;
+       ``Trusted<PlatformManifest>.payload.components.linux_kernel.source.provenance_report_digest``;
+       ``Trusted<PlatformManifest>.payload.components.linux_kernel.provenance``
+     - Only the closed F-02 component source and provenance records are
+       authoritative; queue-specific leaves remain an unresolved dependency.
    * - Linux kernel ABI
-     - ``Trusted<PlatformManifest>.payload.components.linux_kernel.abi``
-     - Kernel userspace and DRM ABI identity is typed and signed.
+     - ``Trusted<PlatformManifest>.payload.components.linux_kernel.abi_contract_id``;
+       ``Trusted<PlatformManifest>.payload.components.linux_kernel.artifacts[]``;
+       ``Trusted<PlatformManifest>.payload.components.linux_kernel.packages[]``
+     - Kernel userspace and DRM ABI identity is the closed component contract
+       and its typed artifact/package records.
    * - Linux configuration
-     - ``Trusted<PlatformManifest>.payload.components.linux_kernel.config_lock``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.config_lock.required_symbols[]``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.config_lock.initramfs_module_closure[]``
-     - Profile, preimage, normalized config, symbol closure, and initramfs
-       closure are all locked.
+     - ``Trusted<PlatformManifest>.payload.components.linux_kernel.config_inputs[]``;
+       ``Trusted<PlatformManifest>.payload.components.linux_kernel.patch_lock``
+     - These are the exact F-02 component leaves. K-01's profile, preimage,
+       required-symbol, and initramfs closure has no F-02 wire path and is an
+       explicit rejected dependency until F-02 supplies one.
    * - Linux toolchain and reports
      - ``Trusted<PlatformManifest>.payload.components.linux_kernel.toolchain_lock``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.toolchain_lock.command_arrays[]``;
        ``Trusted<PlatformManifest>.payload.components.linux_kernel.report_lock``
-     - Commands, versions, report schema, status, and artifacts are locked.
+     - The closed F-02 lock entries and reports are required. K-01 command
+       arrays are not component leaves in the rejected F-02 snapshot.
    * - DTB source and schema
      - ``Trusted<PlatformManifest>.payload.components.dtb_set.source``;
-       ``Trusted<PlatformManifest>.payload.components.dtb_set.binding_schema``;
-       ``Trusted<PlatformManifest>.payload.components.dtb_set.abi``
+       ``Trusted<PlatformManifest>.payload.components.dtb_set.config_inputs[]``;
+       ``Trusted<PlatformManifest>.payload.components.dtb_set.dt_schema``;
+       ``Trusted<PlatformManifest>.payload.components.dtb_set.artifacts[]``
      - DTS inventory, binding-set identity, DT ABI, and source digest agree.
    * - DTB artifacts and mutation
      - ``Trusted<PlatformManifest>.payload.components.dtb_set.artifacts[]``;
-       ``Trusted<PlatformManifest>.payload.components.dtb_set.mutation_envelope``
-     - Pre/post DTB digests and the authenticated mutation envelope are
-       coupled to this manifest.
+       ``Trusted<DtbMutationEnvelope>``
+     - Component artifacts are manifest leaves. Pre/post DTB digests and the
+       authenticated mutation envelope are the separate F-02 auxiliary type.
    * - Firmware bundle and ABI
-     - ``Trusted<PlatformManifest>.payload.components.firmware_bundle.bundle``;
-       ``Trusted<PlatformManifest>.payload.components.firmware_bundle.abi``;
-       ``Trusted<PlatformManifest>.payload.components.firmware_bundle.tuning``
-     - Generation, compatibility, tuning, schema, and signed bundle digest
-       are explicit.
+     - ``Trusted<PlatformManifest>.payload.components.firmware_bundle.source``;
+       ``Trusted<PlatformManifest>.payload.components.firmware_bundle.provenance``;
+       ``Trusted<PlatformManifest>.payload.components.firmware_bundle.firmware_schema``;
+       ``Trusted<PlatformManifest>.payload.components.firmware_bundle.artifacts[]``;
+       ``Trusted<PlatformManifest>.payload.components.firmware_bundle.abi_contract_id``
+     - F-02 exposes the closed firmware schema and component artifact/source
+       records. K-01 ABI generation, compatibility, and tuning fields are an
+       unresolved rejected dependency, not local aliases.
    * - Mesa stack
      - ``Trusted<PlatformManifest>.payload.components.mesa_stack.source``;
-       ``Trusted<PlatformManifest>.payload.components.mesa_stack.abi``;
+       ``Trusted<PlatformManifest>.payload.components.mesa_stack.abi_contract_id``;
        ``Trusted<PlatformManifest>.payload.components.mesa_stack.artifacts[]``
      - GPU generation, kernel DRM ABI, firmware ABI, and Mesa artifact agree.
    * - Boot stack
      - ``Trusted<PlatformManifest>.payload.components.boot_stack.source``;
-       ``Trusted<PlatformManifest>.payload.components.boot_stack.abi``;
+       ``Trusted<PlatformManifest>.payload.components.boot_stack.abi_contract_id``;
        ``Trusted<PlatformManifest>.payload.components.boot_stack.artifacts[]``;
-       ``Trusted<PlatformManifest>.payload.components.boot_stack.slots``;
-       ``Trusted<PlatformManifest>.payload.components.boot_stack.boot_health``
-     - The opaque artifact boundary is identified without source inspection.
+       ``Trusted<PlatformManifest>.payload.components.boot_stack.boot_check_profile``
+     - The opaque artifact boundary and manifest-declared boot profile are
+       identified without source inspection. Slots and health are boot-health
+       payload fields, not component aliases.
    * - Kernel, DTB, firmware, Mesa, boot, and userspace artifacts
      - ``Trusted<PlatformManifest>.payload.components.linux_kernel.artifacts[]``;
        ``Trusted<PlatformManifest>.payload.components.dtb_set.artifacts[]``;
@@ -179,53 +202,70 @@ override one that is listed.
        ``Trusted<PlatformManifest>.payload.components.mesa_stack.artifacts[]``;
        ``Trusted<PlatformManifest>.payload.components.boot_stack.artifacts[]``;
        ``Trusted<PlatformManifest>.payload.artifacts[]``
-     - Every artifact has typed ID, producer, content digest, role, and report
-       link; only this closed set may be selected.
+     - Every artifact has the exact F-02 ID, component ID, kind, media type,
+       size, content digest, version, and signature-policy fields; only this
+       closed set may be selected.
    * - Compatibility relations
-     - ``Trusted<PlatformManifest>.payload.compatibility_relations[]``
-     - Each relation has typed endpoints, relation kind, predicate, and
-       evidence digest; all required relations are bidirectional where stated.
+     - ``Trusted<PlatformManifest>.payload.components.<owner>.compatibility_relations[]``;
+       ``Trusted<PlatformManifest>.payload.compatibility``
+     - Component relation lists are the canonical source and the top-level
+       value is the exact F-02 projection; no parallel top-level relation list
+       exists. The relation member set includes ``relation_schema``.
    * - Rollback closure
-     - ``Trusted<PlatformManifest>.payload.rollback.set[]``;
-       ``Trusted<PlatformManifest>.payload.rollback.last_known_good``
-     - The set is atomic and points to complete accepted component records.
+     - ``Trusted<PlatformManifest>.payload.components.<component>.rollback``;
+       ``Trusted<PlatformManifest>.payload.rollback.last_known_good_required``;
+       ``Trusted<PlatformManifest>.payload.rollback.manifest_ids[]``;
+       ``Trusted<PlatformManifest>.payload.rollback.artifact_ids[]``;
+       ``Trusted<PlatformManifest>.payload.rollback.minimum_retention``;
+       ``Trusted<PlatformManifest>.payload.rollback.failure_attempt_limit``;
+       ``Trusted<PlatformManifest>.payload.rollback.projection_digest``
+     - Component rollback coordinates are canonical; the top-level value is
+       the exact F-02 projection and contains no local set or last-known-good
+       alias.
    * - Package, lock, and evidence closure
      - ``Trusted<PlatformManifest>.payload.package_set``;
-       ``Trusted<PlatformManifest>.payload.locks.schema_set``;
-       ``Trusted<PlatformManifest>.payload.locks.toolchain``;
-       ``Trusted<PlatformManifest>.payload.locks.report``;
-       ``Trusted<PlatformManifest>.payload.evidence``
-     - Schema, toolchain, report, raw-log, signature, and retention identities
-       are part of the same manifest.
+       ``Trusted<PlatformManifest>.payload.consumer_schema_set``;
+       component ``toolchain_lock`` and ``report_lock``;
+       ``Trusted<QualificationRecord>.payload.evidence``
+     - F-02 owns the exact package and consumer projections, component locks,
+       and qualification evidence. There is no manifest ``locks`` or
+       ``evidence`` shadow object.
 
-The canonical source/patch-queue record at
-``Trusted<PlatformManifest>.payload.components.linux_kernel.source_patch_queue``
-is closed and contains
-``authoritative_url``, ``immutable_signed_ref``, ``tag_object_id``,
-``peeled_commit``, ``signer_fingerprint``,
-``signature_verification_evidence_digest``,
-``signature_verification_result``, ``fetch_ref_advertisement_digest``,
-``previous_base``, ``ordered_patch_ledger``, ``queue_tip``, and
-``range_diff_digest`` plus the closed ``command_arrays`` object. The current
-candidate values are immutable tag
-``asahi-7.1.9-1`` and peeled commit
+The canonical F-02 source record is
+``Trusted<PlatformManifest>.payload.components.linux_kernel.source`` with the
+closed fields ``source_kind``, ``repository_id``, ``source_commit``,
+``upstream_commit``, ``source_digest``, and
+``provenance_report_digest``. Its sibling component
+``provenance`` and ``recipe_digest`` are also required. There is no F-02
+queue-specific path, queue ledger, command-array, tag-object, signer, or
+range-diff field in the rejected snapshot. K-01's queue evidence is
+therefore an unresolved F-02 dependency and cannot be placed under a local
+shadow path.
+
+The proposed queue procedure still starts from the immutable signed ref and
+peeled commit selected by the coordinator, preserves the ordered patch ledger,
+and records the fetch/ref, verification, apply, and range-diff evidence. The
+current candidate values are immutable tag ``asahi-7.1.9-1`` and peeled commit
 ``77cb8f24c2381a8abb7272d7bbdec548d6426a8a``. The tag object ID, signer
 fingerprint, verification evidence digest, and verification result are split
 between known and unknown evidence: the locally resolved tag object is
 ``f3bed724fe7160d4a1f9dfb35a6e68f55153d41a``, while GPG verification is
-unavailable and therefore the signer fingerprint, verification evidence
-digest, and verification result remain explicit ``UNKNOWN`` candidate gaps.
-The tag object and peeled commit do not imply a passed signature check.
+unavailable. The tag object and peeled commit do not imply a passed signature
+check. Until an accepted F-02 revision provides typed queue leaves or a
+canonical evidence binding, the queue gate remains ``FAIL_CLOSED``.
 
-The config lock at
-``Trusted<PlatformManifest>.payload.components.linux_kernel.config_lock``
-records the exact generated ``olddefconfig`` preimage bytes,
-its digest, the normalized sorted ``CONFIG_SYMBOL=value`` serialization and
-digest, the base defconfig and fragment identities, every required symbol's
-value and reason, the built-in/module classification, and the complete ordered
-initramfs dependency/signature closure. A missing, unexpectedly modular,
-unsigned, extra, or unexplained dependency fails admission. The report lock
-retains the raw input and output digests and the report schema/status contract.
+F-02 defines the Linux configuration leaves only as the closed
+``Trusted<PlatformManifest>.payload.components.linux_kernel.config_inputs[]``
+and
+``Trusted<PlatformManifest>.payload.components.linux_kernel.patch_lock``
+records. The exact generated ``olddefconfig`` preimage bytes, normalized
+``CONFIG_SYMBOL=value`` serialization, required-symbol linkage, built-in/module
+classification, and ordered initramfs dependency/signature closure have no
+corresponding F-02 component fields in the rejected snapshot. They remain an
+unresolved F-02 dependency and cannot be represented by a local configuration
+lock alias. The report lock retains only its F-02-defined closed
+entries until an accepted schema revision supplies the missing K-01
+configuration record.
 
 The aggregate rows above are closed typed objects, not shorthand aliases. The
 following leaf paths make the closure mechanically addressable:
@@ -237,157 +277,60 @@ following leaf paths make the closure mechanically addressable:
    * - Record
      - Exact canonical leaf paths
      - Missing result
-   * - Source provenance
-     - ``Trusted<PlatformManifest>.payload.components.linux_kernel.source_patch_queue.authoritative_url``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.source_patch_queue.immutable_signed_ref``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.source_patch_queue.tag_object_id``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.source_patch_queue.peeled_commit``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.source_patch_queue.signer_fingerprint``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.source_patch_queue.signature_verification_evidence_digest``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.source_patch_queue.signature_verification_result``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.source_patch_queue.fetch_ref_advertisement_digest``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.source_patch_queue.previous_base``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.source_patch_queue.queue_tip``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.source_patch_queue.range_diff_digest``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.source_patch_queue.command_arrays.fetch_ref``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.source_patch_queue.command_arrays.verify_ref``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.source_patch_queue.command_arrays.apply_queue``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.source_patch_queue.command_arrays.range_diff``
-     - ``PROVENANCE_BLOCK``
-   * - Ordered patch ledger
-     - ``Trusted<PlatformManifest>.payload.components.linux_kernel.source_patch_queue.ordered_patch_ledger[].ordinal``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.source_patch_queue.ordered_patch_ledger[].commit_id``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.source_patch_queue.ordered_patch_ledger[].patch_blob_digest``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.source_patch_queue.ordered_patch_ledger[].subject``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.source_patch_queue.ordered_patch_ledger[].author``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.source_patch_queue.ordered_patch_ledger[].committer``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.source_patch_queue.ordered_patch_ledger[].source_or_review_ref``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.source_patch_queue.ordered_patch_ledger[].upstream_status``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.source_patch_queue.ordered_patch_ledger[].dependency``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.source_patch_queue.ordered_patch_ledger[].retirement_condition``
-     - ``QUEUE_BLOCK``
-   * - Config preimage and symbols
-     - ``Trusted<PlatformManifest>.payload.components.linux_kernel.config_lock.profile``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.config_lock.preimage.bytes_digest``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.config_lock.preimage.normalized_bytes_digest``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.config_lock.base_defconfig.digest``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.config_lock.fragments[]``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.config_lock.required_symbols[].name``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.config_lock.required_symbols[].value``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.config_lock.required_symbols[].reason``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.config_lock.required_symbols[].linkage``
-     - ``CONFIG_CLOSURE_FAIL``
-   * - Initramfs closure
-     - ``Trusted<PlatformManifest>.payload.components.linux_kernel.config_lock.initramfs_module_closure[].module``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.config_lock.initramfs_module_closure[].dependency_closure[]``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.config_lock.initramfs_module_closure[].vermagic``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.config_lock.initramfs_module_closure[].signature_key_id``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.config_lock.initramfs_module_closure[].digest``
-     - ``CONFIG_CLOSURE_FAIL``
-   * - Toolchain lock
-     - ``Trusted<PlatformManifest>.payload.components.linux_kernel.toolchain_lock.recipe_id``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.toolchain_lock.recipe_digest``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.toolchain_lock.compiler``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.toolchain_lock.compiler_version``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.toolchain_lock.compiler_digest``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.toolchain_lock.rust``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.toolchain_lock.llvm``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.toolchain_lock.dtc``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.toolchain_lock.dt_schema``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.toolchain_lock.python``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.toolchain_lock.sphinx``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.toolchain_lock.builder_image``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.toolchain_lock.locale``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.toolchain_lock.make_variables``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.toolchain_lock.command_arrays[]``
-     - ``TOOLING_BLOCK``
-   * - Report lock
-     - ``Trusted<PlatformManifest>.payload.components.linux_kernel.report_lock.schemas[]``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.report_lock.status_values[]``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.report_lock.retention``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.report_lock.expected_artifacts[]``
-     - ``REPORT_BLOCK``
-   * - Component records
-     - The exact component paths are
+   * - Source and component grammar
+     - Each of the exact component paths
        ``Trusted<PlatformManifest>.payload.components.linux_kernel``,
        ``Trusted<PlatformManifest>.payload.components.dtb_set``,
        ``Trusted<PlatformManifest>.payload.components.firmware_bundle``,
        ``Trusted<PlatformManifest>.payload.components.mesa_stack``, and
-       ``Trusted<PlatformManifest>.payload.components.boot_stack``. Each has
-       ``component_schema``, ``component_id``, ``source.source_kind``,
-       ``source.repository_id``, ``source.source_commit``,
-       ``source.upstream_commit``, ``source.source_digest``,
-       ``source.provenance_report_digest``, ``provenance.provenance_schema``,
-       ``provenance.source_observation_digest``,
-       ``provenance.build_input_digest``, ``provenance.attestation_digest``,
-       ``provenance.producer_binding_digest``, ``recipe_digest``,
-       ``abi_contract_id``, ``config_inputs[]``, ``policy_inputs[]``,
-       ``patch_lock``, ``toolchain_lock``, ``report_lock``, ``artifacts[]``,
+       ``Trusted<PlatformManifest>.payload.components.boot_stack`` has only
+       the F-02 ``Component`` fields: ``component_schema``, ``component_id``,
+       ``source``, ``provenance``, ``recipe_digest``, ``abi_contract_id``,
+       ``config_inputs[]``, ``policy_inputs[]``, ``patch_lock``,
+       ``toolchain_lock``, ``report_lock``, ``artifacts[]``, ``packages``,
+       ``firmware_schema``, ``dt_schema``, ``boot_check_profile``,
        ``rollback``, and ``compatibility_relations[]``
-     - ``COMPONENT_TUPLE_QUARANTINE``
+     - Missing, extra, or mismatched component leaves fail through the F-02
+       parser or cross-document verifier. K-01-specific queue/config/ABI
+       details remain unresolved dependencies.
    * - Artifact records
      - ``Trusted<PlatformManifest>.payload.artifacts[].artifact_id``;
-       ``Trusted<PlatformManifest>.payload.artifacts[].kind``;
        ``Trusted<PlatformManifest>.payload.artifacts[].component_id``;
+       ``Trusted<PlatformManifest>.payload.artifacts[].kind``;
        ``Trusted<PlatformManifest>.payload.artifacts[].media_type``;
        ``Trusted<PlatformManifest>.payload.artifacts[].size_bytes``;
        ``Trusted<PlatformManifest>.payload.artifacts[].content_digest``;
        ``Trusted<PlatformManifest>.payload.artifacts[].artifact_version``;
        ``Trusted<PlatformManifest>.payload.artifacts[].signature_policy_id``;
-       the same artifact leaves are required at each of the five exact
-       component artifact paths named in the preceding component row
-     - ``ARTIFACT_TUPLE_QUARANTINE``
-   * - Component inputs and patch lock
-     - On each of the five exact component paths,
-       ``config_inputs[].input_id``; ``config_inputs[].input_kind``;
-       ``config_inputs[].source_digest``;
-       ``config_inputs[].normalized_content_digest``;
-       ``config_inputs[].policy_digest``; ``policy_inputs[].policy_id``;
-       ``policy_inputs[].policy_version``; ``policy_inputs[].policy_digest``;
-       ``policy_inputs[].source_digest``; ``patch_lock.mode``;
-       ``patch_lock.entries[].patch_id``; ``patch_lock.entries[].source_digest``;
-       ``patch_lock.entries[].patch_digest``; ``patch_lock.entries[].order``;
-       ``patch_lock.lock_digest``
-     - ``COMPONENT_LOCK_BLOCK``
-   * - Toolchain and report entries
-     - On ``Trusted<PlatformManifest>.payload.components.linux_kernel``,
-       ``toolchain_lock.mode``; ``toolchain_lock.entries[].toolchain_id``;
-       ``toolchain_lock.entries[].toolchain_version``;
-       ``toolchain_lock.entries[].toolchain_digest``;
-       ``toolchain_lock.entries[].flags_digest``; ``toolchain_lock.lock_digest``;
-       ``report_lock.mode``; ``report_lock.entries[].report_id``;
-       ``report_lock.entries[].report_kind``;
-       ``report_lock.entries[].report_digest``;
-       ``report_lock.entries[].producer_toolchain_digest``;
-       ``report_lock.lock_digest``
-     - ``TOOLING_BLOCK`` or ``REPORT_BLOCK``
-   * - Component rollback
-     - On each of the five exact component paths,
-       ``rollback.coordinate_schema``; ``rollback.previous_component_ids[]``;
-       ``rollback.artifact_ids[]``; ``rollback.retention_count``;
-       ``rollback.rollback_policy_id``; ``rollback.rollback_policy_digest``
-     - ``ROLLBACK_SET_QUARANTINE``
-   * - Compatibility relations
-     - ``Trusted<PlatformManifest>.payload.compatibility_relations[].left_component_id``;
-       ``Trusted<PlatformManifest>.payload.compatibility_relations[].relation``;
-       ``Trusted<PlatformManifest>.payload.compatibility_relations[].right_component_id``;
-       ``Trusted<PlatformManifest>.payload.compatibility_relations[].contract_id``;
-       ``Trusted<PlatformManifest>.payload.compatibility_relations[].evidence_digest``.
-       Each of the five exact component records named above repeats the same
-       closed relation-member set under its own
-       ``compatibility_relations[]`` path. ``contract_id`` is the closed typed
-       predicate; no shell expression or free-form relation is accepted.
-     - ``COMPATIBILITY_QUARANTINE``
-   * - Rollback records
-     - ``Trusted<PlatformManifest>.payload.rollback.set[]``;
-       ``Trusted<PlatformManifest>.payload.rollback.last_known_good``;
-       ``Trusted<PlatformManifest>.payload.rollback.last_known_good.document_id``;
-       ``Trusted<PlatformManifest>.payload.rollback.last_known_good.payload_digest``;
-       ``Trusted<PlatformManifest>.payload.rollback.failure_attempt_limit``
-     - ``ROLLBACK_SET_QUARANTINE``
+       and the identical ``artifacts[]`` record on each component
+     - Missing or conflicting component/projection records fail with the
+       F-02 manifest projection or cross-document signal.
+   * - Inputs and locks
+     - On each exact component path, ``config_inputs[]`` has
+       ``input_id``, ``input_kind``, ``source_digest``,
+       ``normalized_content_digest``, and ``policy_digest``;
+       ``policy_inputs[]`` has ``policy_id``, ``policy_version``,
+       ``policy_digest``, and ``source_digest``; ``patch_lock``,
+       ``toolchain_lock``, and ``report_lock`` use their F-02 closed entries
+     - Required component modes, missing entries, unknown fields, and digest
+       conflicts fail through F-02 parsing or binding integrity.
+   * - Firmware, DT schema, and boot profile
+     - ``Trusted<PlatformManifest>.payload.components.firmware_bundle.firmware_schema``;
+       ``Trusted<PlatformManifest>.payload.components.dtb_set.dt_schema``;
+       ``Trusted<PlatformManifest>.payload.components.boot_stack.boot_check_profile``
+     - These nullable fields are required only on their named component by
+       the F-02 fixed profile; K-01 must not invent ``abi``, ``bundle``,
+       ``tuning``, ``slots``, or ``boot_health`` children.
+   * - Component rollback and relations
+     - Each component's ``rollback`` and ``compatibility_relations[]``;
+       top-level ``Trusted<PlatformManifest>.payload.compatibility`` and
+       ``Trusted<PlatformManifest>.payload.rollback`` are exact F-02
+       projections
+     - Projection mismatch, missing component records, and duplicate
+       relation ownership fail through the F-02 authority-conflict signal.
 
-Every listed array is closed, ordered, and duplicate-rejected by the accepted
-F-02 schema. A consumer resolves leaf paths from the single
+Every listed array is closed, ordered, and duplicate-rejected by the F-02
+grammar. A consumer resolves leaves from the single
 ``Trusted<PlatformManifest>`` value and rejects a missing leaf, unknown nested
 key, alternate relation, or aggregate-only record; it never reconstructs a
 leaf from an abbreviated member name.
@@ -404,9 +347,11 @@ K-01: source, queue, configuration, and interface contract
 Upstream sync and minimal patch queue
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The queue starts at the immutable signed ref and peeled commit recorded in
-``Trusted<PlatformManifest>.payload.components.linux_kernel.source_patch_queue``
-and is rebased or recreated from that recorded upstream reference. The
+The queue starts at the immutable signed ref and peeled commit associated with
+the F-02 source record
+``Trusted<PlatformManifest>.payload.components.linux_kernel.source``. The
+recorded ``source_commit`` and ``upstream_commit`` are compared with the
+external signed-ref evidence before a queue is rebased or recreated. The
 downstream branch must not become a second unreviewable kernel history.
 
 .. list-table:: Queue layers
@@ -445,14 +390,15 @@ Generated DTBs, merged configs, logs, and firmware blobs are not committed to
 the source queue. Their digests belong in the release manifest and evidence
 record.
 
-The source/patch-queue record is self-contained at the frozen F-02 path
-``Trusted<PlatformManifest>.payload.components.linux_kernel.source_patch_queue``.
-Its
-``ordered_patch_ledger`` contains each ordinal, commit ID, patch-blob digest,
-subject, author, committer, source or review reference, upstream status,
-dependency link, and retirement condition. ``queue_tip`` is the exact commit
-reached by applying that ledger. A local remote name, a moving branch, a date,
-or a source SHA without the signed-ref evidence is not provenance.
+The ordered patch ledger, queue tip, range diff, and signed-ref verification
+evidence are external queue evidence associated with the F-02 component
+``source`` and ``provenance`` records; they are not F-02 component fields.
+The ledger contains each ordinal, commit ID, patch-blob digest, subject,
+author, committer, source or review reference, upstream status, dependency
+link, and retirement condition. A local remote name, a moving branch, a date,
+or a source SHA without the signed-ref evidence is not provenance. Until F-02
+adds an accepted typed binding for this evidence, its absence keeps the queue
+gate fail-closed.
 
 Reconstruction starts from ``authoritative_url``, fetches only
 ``immutable_signed_ref``, verifies the tag object and its peeled commit,
@@ -464,17 +410,14 @@ toolchain recipe, and output digests. An unavailable signed ref, tag object,
 fingerprint, GPG result, patch entry, source record, or range-diff is
 ``FAIL_CLOSED`` rather than best effort.
 
-The source operations are themselves complete lock-derived argv arrays at
-these canonical paths:
-``Trusted<PlatformManifest>.payload.components.linux_kernel.source_patch_queue.command_arrays.fetch_ref``;
-``Trusted<PlatformManifest>.payload.components.linux_kernel.source_patch_queue.command_arrays.verify_ref``;
-``Trusted<PlatformManifest>.payload.components.linux_kernel.source_patch_queue.command_arrays.apply_queue``;
-and
-``Trusted<PlatformManifest>.payload.components.linux_kernel.source_patch_queue.command_arrays.range_diff``.
-Each array contains every executable, argument, repository URL/ref, output
-path, and environment assignment needed for that operation. The runner passes
-the arrays directly with no shell expansion, caller-supplied remote, moving
-branch, or appended option.
+The source operations require complete lock-derived argv arrays, but the
+rejected F-02 snapshot defines no component ``command_arrays`` path. The
+arrays therefore remain implementation evidence associated with the component
+report lock, not a K-01 or local manifest schema. Each future accepted binding
+must contain every executable, argument, repository URL/ref, output path, and
+environment assignment needed for the operation. The runner must pass the
+arrays directly with no shell expansion, caller-supplied remote, moving branch,
+or appended option.
 
 The sync job should fetch the allowlisted upstream remote, verify the expected
 ref, apply the queue in order, run the source and DT gates, and publish a
@@ -591,25 +534,24 @@ platform registry identifiers. A family or marketing-compatible fallback
 cannot replace either value. New DT files must follow
 ``Documentation/devicetree/bindings/arm/apple.yaml`` and the DT coding style.
 
-Board identity is admitted only from
-``Trusted<PlatformManifest>.payload.board_id`` and its complete typed
-``Trusted<PlatformManifest>.payload.identity_match`` tuple. The tuple has
-exactly ``ordered_linux_compatible``, ``soc_compatible``,
-``product_model``, ``firmware_identity``, and ``provenance``. Every source
-contributing a tuple member is named and signed; source order is preserved. A
-compatible string is accepted only when the full tuple maps to exactly one
-board ID. A product name,
-SoC token, serial label, or compatible string cannot fill another member by
-inference.
+Board identity is admitted from the explicit
+``Trusted<PlatformManifest>.payload.board_targets[]`` after its
+``Trusted<PlatformManifest>.payload.board_registry_digest`` resolves the
+single trusted
+``Trusted<BoardRegistry>.payload.boards[].board_id`` record. The exact F-02
+identity leaves are that record's
+``identity_match.macos`` and ``identity_match.linux.compatible[]`` plus
+``identity_match.linux.model``; ``soc.soc_id`` and the closed ``firmware``
+record remain diagnostic and compatibility inputs, not substitutes for board
+identity. The manifest has no local ``board_id`` or ``identity_match`` tuple.
 
-Any missing, duplicate, conflicting, expired, or unverifiable tuple member
+Any missing, duplicate, conflicting, expired, or unverifiable registry record
 quarantines the board and prevents DTB, firmware, config, boot, or physical
-profile selection. The j713 case is an explicit hostile fixture: the M3 source
-and M4 source both contain the same ``j713`` token, while their typed SoC,
-product/model, firmware, or provenance members conflict. Token equality does
-not reconcile those records; the board is quarantined until a new signed
-reconciliation names both sources, the resolved board ID, every tuple member,
-the owner, and the approval. Family or generation inference cannot lift it.
+profile selection. The j713 case is an explicit hostile fixture: the same token
+from two observations cannot reconcile two registry records or create a board
+target. Token equality, a product name, a SoC token, or a Linux compatible
+string cannot fill a missing registry member by inference. Only one complete
+trusted registry record may satisfy an explicit manifest target.
 
 Common includes are additive and auditable. A common file may not silently
 override a board's safety-critical power, thermal, audio, or display behavior.
@@ -920,7 +862,8 @@ DTB digest and mutation boundary
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The DTB boundary consumes only ``Trusted<DtbMutationEnvelope>`` under the
-frozen F-02 type. Its common envelope paths are authoritative; the payload
+provisional rejected F-02 type. Its common envelope paths are the candidate
+external contract; the payload
 binds these exact fields:
 
 .. list-table:: dtb-mutation-envelope/v1 bindings
@@ -931,58 +874,66 @@ binds these exact fields:
      - Exact payload path
      - K-01 requirement
    * - Schema and source set
-     - ``Trusted<DtbMutationEnvelope>.payload.schema_set.id``;
-       ``Trusted<DtbMutationEnvelope>.payload.schema_set.version``;
-       ``Trusted<DtbMutationEnvelope>.payload.source_identity``
-     - Exact schema set and full DTS/DTB source identity.
+     - ``Trusted<DtbMutationEnvelope>.payload.schema``;
+       ``Trusted<DtbMutationEnvelope>.payload.schema_set_digest``;
+       ``Trusted<DtbMutationEnvelope>.payload.source_identity``;
+       ``Trusted<DtbMutationEnvelope>.payload.dt_schema_identity``
+     - Exact F-02 schema-set digest, source identity, and DT schema identity.
    * - Manifest and board
-     - ``Trusted<DtbMutationEnvelope>.payload.manifest_document_id``;
-       ``Trusted<DtbMutationEnvelope>.payload.manifest_payload_digest``;
-       ``Trusted<DtbMutationEnvelope>.payload.board_id``
-     - Must equal the accepted platform manifest document ID, payload digest,
-       and board ID.
+     - ``Trusted<DtbMutationEnvelope>.payload.board_identity.board_id``;
+       ``Trusted<DtbMutationEnvelope>.payload.platform_manifest_document_id``;
+       ``Trusted<DtbMutationEnvelope>.payload.platform_manifest_payload_digest``
+     - Must equal the selected registry board target and the verified platform
+       manifest document ID and payload digest.
    * - DTB bytes
-     - ``Trusted<DtbMutationEnvelope>.payload.dtb.before_digest``;
-       ``Trusted<DtbMutationEnvelope>.payload.dtb.after_digest``
+     - ``Trusted<DtbMutationEnvelope>.payload.pre_mutation_dtb_digest``;
+       ``Trusted<DtbMutationEnvelope>.payload.post_mutation_dtb_digest``
      - SHA-256 is recomputed over the exact pre and post byte strings.
    * - Policy, tool, and artifact
-     - ``Trusted<DtbMutationEnvelope>.payload.policy.id``;
-       ``Trusted<DtbMutationEnvelope>.payload.policy.version``;
-       ``Trusted<DtbMutationEnvelope>.payload.policy.digest``;
-       ``Trusted<DtbMutationEnvelope>.payload.tool.id``;
-       ``Trusted<DtbMutationEnvelope>.payload.tool.version``;
-       ``Trusted<DtbMutationEnvelope>.payload.tool.digest``;
-       ``Trusted<DtbMutationEnvelope>.payload.artifact.id``;
-       ``Trusted<DtbMutationEnvelope>.payload.artifact.version``;
-       ``Trusted<DtbMutationEnvelope>.payload.artifact.digest``
-     - Exact approved versions and digests are required.
+     - ``Trusted<DtbMutationEnvelope>.payload.policy_identity``;
+       ``Trusted<DtbMutationEnvelope>.payload.tool_identity``;
+       ``Trusted<DtbMutationEnvelope>.payload.artifact_identity``;
+       ``Trusted<DtbMutationEnvelope>.payload.firmware_bundle_identity``;
+       ``Trusted<DtbMutationEnvelope>.payload.dt_schema_identity``
+     - Each exact F-02 identity record is compared by all of its closed
+       members, including version and digest.
    * - Mutations
      - ``Trusted<DtbMutationEnvelope>.payload.authorized_mutations[]``
-     - Ordered closed entries contain exact DTS path, operation,
-       before-value digest, and after-value digest/value.
-   * - Firmware and signer
-     - ``Trusted<DtbMutationEnvelope>.payload.firmware.bundle_id``;
-       ``Trusted<DtbMutationEnvelope>.payload.firmware.schema``;
+     - Ordered closed entries contain ``sequence``, ``mutation_id``,
+       ``property_path``, ``operation``, before/after value digests,
+       authorization rule ID, and before/after preimage digests.
+   * - Nonce, replay, expiry, and signer
+     - ``Trusted<DtbMutationEnvelope>.payload.nonce``;
+       ``Trusted<DtbMutationEnvelope>.payload.replay_identity.replay_id``;
+       ``Trusted<DtbMutationEnvelope>.payload.replay_identity.replay_domain``;
+       ``Trusted<DtbMutationEnvelope>.payload.replay_identity.issued_nonce_digest``;
+       ``Trusted<DtbMutationEnvelope>.payload.signer_authority``;
        ``Trusted<DtbMutationEnvelope>.payload.expires_at``;
-       ``Trusted<DtbMutationEnvelope>.payload.replay_identity``;
        ``Trusted<DtbMutationEnvelope>.signatures[]``
-     - Firmware bundle/schema, expiry, replay identity, and the verified
-       signer/signature entry are bound by the common envelope.
+     - The nonce digest uses the F-02 ``omarchy-dtb-nonce/v1`` domain and the
+       replay domain is ``omarchy-dtb-mutation/v1``. Expiry, durable replay,
+       authority binding, and the verified signature are all required.
 
-The producer may emit an envelope only after it has the exact manifest
-document ID and payload digest, full source identity, pre-mutation DTB digest,
-policy/tool/artifact locks, firmware schema, ordered mutation list, expiry,
-and replay identity. The producer signs the common envelope and retains the
-canonical bytes, signature evidence, before/after DTB bytes, and ordered diff.
+The producer may emit an envelope only after it has the exact platform-manifest
+document ID and payload digest, board identity, full source identity,
+pre/post-mutation DTB digests, policy/tool/artifact/firmware/DT-schema
+identities, ordered mutation list, nonce, expiry, and replay identity. The
+producer signs the common envelope and retains the canonical bytes, signature
+evidence, before/after DTB bytes, and ordered diff. The replay identity uses
+``replay_domain = "omarchy-dtb-mutation/v1"`` and
+``issued_nonce_digest = sha256(ASCII("omarchy-dtb-nonce/v1") || 0x00 || nonce)``.
 For the K-01 baseline, the ordered allowlist contains only the exact AGX node
 paths for ``apple,firmware-abi``; it is empty for every other property, node,
 compatible, memory reservation, phandle, and boot argument. Any additional
 entry requires a new binding, manifest schema, and policy revision before it
 can be emitted.
-The consumer independently verifies the signature and expiry, recomputes both
-DTB digests and every value digest, checks the source/schema/policy/tool/
-artifact/firmware tuple, checks ordered operations against the allowlist, and
-records the resulting post digest in the platform manifest's DTB artifact.
+The consumer independently verifies the signature and expiry, reserves the
+nonce/replay identity durably, recomputes both DTB digests and every value
+digest, checks the source/schema/policy/tool/artifact/firmware/DT-schema tuple,
+checks ordered operations against the allowlist, and records the resulting
+post digest in the owning DTB component artifact. It uses the F-02 closed
+authority seam for signer role and scope; K-01 does not resolve a signer
+locally.
 Neither side inspects or relies on the opaque bootloader implementation.
 
 The K-01 hostile fixture matrix is mandatory. Each condition is a hard
@@ -997,35 +948,41 @@ rejection and prevents boot-health success:
      - Required result
    * - Unauthorized node or property, including a new compatible, phandle,
        reservation, boot argument, or non-allowlisted property
-     - ``DT_MUTATION_UNAUTHORIZED``
+     - ``UNKNOWN_MUTATION``
      - Reject; no DTB use.
+   * - Wrong signer, domain, context, role, or authority scope
+     - ``SIGNATURE_CONTEXT_MISMATCH``
+     - Reject before mutation; no local authority fallback.
    * - Wrong before-value digest or operation ordering
-     - ``DT_MUTATION_BEFORE_MISMATCH``
+     - ``DTB_INPUT_VERIFICATION_FAILURE``
      - Reject; no partial apply.
    * - Wrong policy, tool, or artifact ID/version/digest
-     - ``DT_MUTATION_LOCK_MISMATCH``
+     - ``CROSS_DOCUMENT_MISMATCH``
      - Reject; quarantine the DTB.
-   * - Stale, expired, or replayed envelope
-     - ``DT_MUTATION_REPLAY``
+   * - Stale, expired, or replayed envelope, nonce, or replay ID
+     - ``EXPIRY_OR_REPLAY_FAILURE``
      - Reject; retain the replay evidence.
    * - Source identity, board ID, manifest document ID, payload digest, or
        firmware bundle/schema transplanted from another tuple
-     - ``DT_MUTATION_TUPLE_MISMATCH``
+     - ``CROSS_DOCUMENT_MISMATCH``
      - Reject; quarantine the board and release.
    * - Unknown mutation operation or mutation path
-     - ``DT_MUTATION_UNKNOWN``
+     - ``UNKNOWN_MUTATION``
      - Reject; require a schema/policy revision.
-   * - Claimed before or after digest differs from independently computed
-       bytes, or a digest is mutable data inside the measured payload
-     - ``DT_MUTATION_DIGEST_MISMATCH``
+   * - A valid digest is substituted into a different typed field, or a
+       claimed digest differs from independently computed bytes
+     - ``DTB_INPUT_VERIFICATION_FAILURE``
      - Reject; no claimed digest is trusted.
    * - Source identity or the independently computed post-mutation digest does
        not match the manifest's DTB source/artifact tuple
-     - ``DT_MUTATION_DIGEST_MISMATCH``
+     - ``CROSS_DOCUMENT_MISMATCH``
      - Reject; quarantine the source, DTB, and dependent release tuple.
    * - Missing signature, signer, expiry, replay identity, source, or report
-     - ``DT_MUTATION_INCOMPLETE``
-     - Reject; ``TOOLING_BLOCK`` or ``UNKNOWN`` is not success.
+     - ``DTB_INPUT_BOUNDARY_FAILURE``
+     - Reject; ``TOOLING_BLOCK`` or an unknown result is not success.
+   * - Wrong nonce domain or nonce digest
+     - ``DTB_INPUT_VERIFICATION_FAILURE``
+     - Reject before mutation; reserve nothing for the invalid tuple.
 
 The kernel accepts only the authenticated envelope and measured handoff. It
 does not accept a DTB-carried digest, boot argument, or local alias as proof.
@@ -1062,57 +1019,35 @@ buffer, or failed reset is a failed capability row and is retained in the
 evidence record. No generic firmware, DT, or power-domain fallback may make a
 required row appear healthy.
 
-The firmware ABI record is explicit and versioned at
-``Trusted<PlatformManifest>.payload.components.firmware_bundle.abi``. Its
-closed fields are
-``generation``, ``compatibility``, ``tuning``, ``source``, ``digest``,
-``signature_key_id``, ``min_kernel_abi``, ``max_kernel_abi``,
-``required_dt_schema_set``, and ``required_mesa_abi`` where applicable.
-``generation`` identifies the hardware and firmware generation;
-``compatibility`` identifies the protocol tuple; and ``tuning`` identifies
-the signed calibration, power, clock, and performance record. A DT property,
-marketing name, or responding client is not provenance for any field.
+The F-02 firmware identity is the exact
+``Trusted<PlatformManifest>.payload.components.firmware_bundle.firmware_schema``
+record with ``schema_id``, ``schema_version``, and ``schema_digest``. The
+bundle's source, provenance, ``abi_contract_id``, and ``artifacts[]`` are the
+other canonical component leaves. The top-level
+``Trusted<PlatformManifest>.payload.firmware_schema`` is only the exact
+projection of that component field. F-02 has no ``abi`` object with
+generation, compatibility, tuning, key, or kernel/Mesa bound children; those
+firmware protocol and calibration facts remain an unresolved dependency and
+must not be given local manifest paths. A DT property, marketing name, or
+responding client is not provenance for any field.
 
-The exact ABI leaf paths are
-``Trusted<PlatformManifest>.payload.components.firmware_bundle.abi.generation``;
-``Trusted<PlatformManifest>.payload.components.firmware_bundle.abi.compatibility``;
-``Trusted<PlatformManifest>.payload.components.firmware_bundle.abi.tuning``;
-``Trusted<PlatformManifest>.payload.components.firmware_bundle.abi.source``;
-``Trusted<PlatformManifest>.payload.components.firmware_bundle.abi.digest``;
-``Trusted<PlatformManifest>.payload.components.firmware_bundle.abi.signature_key_id``;
-``Trusted<PlatformManifest>.payload.components.firmware_bundle.abi.min_kernel_abi``;
-``Trusted<PlatformManifest>.payload.components.firmware_bundle.abi.max_kernel_abi``;
-``Trusted<PlatformManifest>.payload.components.firmware_bundle.abi.required_dt_schema_set``;
-and
-``Trusted<PlatformManifest>.payload.components.firmware_bundle.abi.required_mesa_abi``.
-The bundle source and provenance are independently bound at
-``Trusted<PlatformManifest>.payload.components.firmware_bundle.source`` and
-``Trusted<PlatformManifest>.payload.components.firmware_bundle.provenance``;
-the component bundle artifact is bound at
-``Trusted<PlatformManifest>.payload.components.firmware_bundle.artifacts[]``
-and the corresponding manifest artifact record.
-
-The accepted constraint is exact for the manifest-selected generation and
-ABI major, and is within the signed minor and patch bounds in the same record.
 The kernel rejects absent, unknown, out-of-range, or signature-invalid
-generation, compatibility, tuning, schema, memory, reset, or version data. A
-client cannot silently negotiate an older protocol merely because it responds.
-Update transitions are typed entries in
-``Trusted<PlatformManifest>.payload.compatibility_relations[]`` binding
-``Trusted<PlatformManifest>.payload.components.firmware_bundle.bundle.digest``
-from the old artifact to the new artifact for the exact board ID and manifest
-document ID. An unlisted upgrade or downgrade is refused. Updates are staged,
-verified, and committed atomically, with the last-known-good bundle retained by
-``Trusted<PlatformManifest>.payload.rollback.last_known_good``.
+firmware schema, memory, reset, or version evidence. A client cannot silently
+negotiate an older protocol merely because it responds. Update transitions use
+the owning component's typed
+``compatibility_relations[]`` and its ``artifacts[].content_digest`` records;
+the top-level ``Trusted<PlatformManifest>.payload.compatibility`` and
+``Trusted<PlatformManifest>.payload.rollback`` values are exact F-02
+projections. An unlisted upgrade or downgrade is refused. Updates are staged,
+verified, and committed atomically against the component rollback coordinates;
+F-02 does not provide a bundle digest or last-known-good alias.
 
 The exact firmware prerequisite and rejection are fixed by the following
-relations in ``Trusted<PlatformManifest>.payload.compatibility_relations[]``.
-Each row is a closed relation record with exact paths
-``Trusted<PlatformManifest>.payload.compatibility_relations[].left_component_id``,
-``Trusted<PlatformManifest>.payload.compatibility_relations[].relation``,
-``Trusted<PlatformManifest>.payload.compatibility_relations[].right_component_id``,
-``Trusted<PlatformManifest>.payload.compatibility_relations[].contract_id``,
-and ``Trusted<PlatformManifest>.payload.compatibility_relations[].evidence_digest``:
+component relation records. Each owning component relation has the closed
+F-02 fields ``relation_schema``, ``left_component_id``, ``relation``,
+``right_component_id``, ``contract_id``, and ``evidence_digest``. The relation
+list is owned by the lexicographically smaller component ID; the top-level
+projection is ``Trusted<PlatformManifest>.payload.compatibility``:
 
 .. list-table:: Firmware ABI relation closure
    :header-rows: 1
@@ -1122,47 +1057,48 @@ and ``Trusted<PlatformManifest>.payload.compatibility_relations[].evidence_diges
      - Typed relation endpoints
      - Unknown or unfrozen result
    * - Firmware generation and compatibility
-     - ``Trusted<PlatformManifest>.payload.components.firmware_bundle.abi.generation``
-       and
-       ``Trusted<PlatformManifest>.payload.components.firmware_bundle.abi.compatibility``
-       to ``Trusted<PlatformManifest>.payload.components.linux_kernel.abi``
-     - ``FIRMWARE_ABI_QUARANTINE``.
+     - ``Trusted<PlatformManifest>.payload.components.firmware_bundle.abi_contract_id``
+       to ``Trusted<PlatformManifest>.payload.components.linux_kernel.abi_contract_id``
+     - F-02 relation absent or mismatched: reject with its closed
+       cross-document/projection signal.
    * - Firmware tuning and DT schema
-     - ``Trusted<PlatformManifest>.payload.components.firmware_bundle.tuning``
-       and
-       ``Trusted<PlatformManifest>.payload.components.firmware_bundle.abi.required_dt_schema_set``
-       to ``Trusted<PlatformManifest>.payload.components.dtb_set.binding_schema``
-     - ``DT_SCHEMA_QUARANTINE``.
+     - ``Trusted<PlatformManifest>.payload.components.firmware_bundle.firmware_schema``
+       to ``Trusted<PlatformManifest>.payload.components.dtb_set.dt_schema``
+     - F-02 relation absent or mismatched: reject with its closed
+       cross-document/projection signal.
    * - Firmware and Mesa
-     - ``Trusted<PlatformManifest>.payload.components.firmware_bundle.abi.required_mesa_abi``
-       to ``Trusted<PlatformManifest>.payload.components.mesa_stack.abi``
-     - ``MESA_ABI_QUARANTINE``.
+     - ``Trusted<PlatformManifest>.payload.components.firmware_bundle.abi_contract_id``
+       to ``Trusted<PlatformManifest>.payload.components.mesa_stack.abi_contract_id``
+     - F-02 relation absent or mismatched: reject with its closed
+       cross-document/projection signal.
    * - Firmware and boot stack
-     - ``Trusted<PlatformManifest>.payload.components.firmware_bundle.bundle``
-       to ``Trusted<PlatformManifest>.payload.components.boot_stack.abi`` and
-       ``Trusted<PlatformManifest>.payload.components.boot_stack.artifacts[]``
-     - ``BOOT_TUPLE_QUARANTINE``.
+     - ``Trusted<PlatformManifest>.payload.components.firmware_bundle.artifacts[]``
+       to ``Trusted<PlatformManifest>.payload.components.boot_stack.abi_contract_id``
+       and ``Trusted<PlatformManifest>.payload.components.boot_stack.artifacts[]``
+     - F-02 relation absent or mismatched: reject with its closed
+       cross-document/projection signal.
    * - Kernel, DTB, and firmware artifacts
      - ``Trusted<PlatformManifest>.payload.components.linux_kernel.artifacts[]``,
        ``Trusted<PlatformManifest>.payload.components.dtb_set.artifacts[]``, and
        ``Trusted<PlatformManifest>.payload.components.firmware_bundle.artifacts[]``
        to the corresponding typed entries in
        ``Trusted<PlatformManifest>.payload.artifacts[]``
-     - ``ARTIFACT_TUPLE_QUARANTINE``.
+     - F-02 artifact projection or cross-document mismatch: reject.
    * - Manifest and rollback
      - ``Trusted<PlatformManifest>.payload.document_id`` to
-       ``Trusted<PlatformManifest>.payload.rollback.set[]`` and
-       ``Trusted<PlatformManifest>.payload.rollback.last_known_good``
-     - ``ROLLBACK_SET_QUARANTINE``.
+       ``Trusted<PlatformManifest>.payload.rollback.manifest_ids[]`` and
+       each component's ``rollback.previous_manifest_ids[]`` and
+       ``artifact_ids[]``
+     - F-02 rollback projection or cross-document mismatch: reject.
 
-The relation is not to be frozen later: the prerequisite is an accepted F-02
-``Trusted<PlatformManifest>.payload.compatibility_relations[]`` entry with
-typed endpoints, a predicate, and evidence digest, authenticated in the same
-platform manifest. Any unknown or unfrozen tuple is quarantined and the
-release is rejected. Recovery selects the signed last-known-good manifest and
-its complete rollback set; it never mixes a new kernel or DTB with an old
-firmware member. Unknown reset, crash, shared-memory, mailbox, or coredump
-behavior is a failed ABI admission, not an optional diagnostic.
+The prerequisite is an accepted F-02 component relation entry with typed
+endpoints, one closed relation kind, a contract ID, and evidence digest,
+authenticated in the same platform manifest. Any unknown or unfrozen tuple is
+rejected. Recovery selects a manifest ID and artifact set from the exact
+component rollback coordinates and top-level rollback projection; it never
+mixes a new kernel or DTB with an old firmware member. Unknown reset, crash,
+shared-memory, mailbox, or coredump behavior is a failed ABI admission, not an
+optional diagnostic.
 
 The GPU binding currently carries ``apple,firmware-abi`` and describes the
 calibration, globals, handoff, and page-table regions consumed by AGX. The
@@ -1290,45 +1226,45 @@ for every row and must not add an inferred edge.
        ``drivers/soc/apple/Kconfig:16-19``
      - ``PM``; ``ARCH_APPLE || (64BIT && COMPILE_TEST)``
      - ``ARCH_APPLE || COMPILE_TEST``; no select
-     - ``CONFIG_CLOSURE_FAIL``
+     - F-02 configuration dependency remains unresolved.
    * - ``APPLE_RTKIT``
        ``drivers/soc/apple/Kconfig:36-39``
      - ``APPLE_MAILBOX``; ``ARCH_APPLE || COMPILE_TEST``
      - ``ARCH_APPLE || COMPILE_TEST``; no select
-     - ``CONFIG_CLOSURE_FAIL``
+     - F-02 configuration dependency remains unresolved.
    * - ``APPLE_SART``
        ``drivers/soc/apple/Kconfig:61-63``
      - ``ARCH_APPLE || COMPILE_TEST``
      - ``ARCH_APPLE || COMPILE_TEST``; no select
-     - ``CONFIG_CLOSURE_FAIL``
+     - F-02 configuration dependency remains unresolved.
    * - ``MFD_MACSMC``
        ``drivers/mfd/Kconfig:328-333``
      - ``ARCH_APPLE || COMPILE_TEST``; ``OF``; ``APPLE_RTKIT``
      - No enclosing Apple condition; selects ``MFD_CORE``
-     - ``CONFIG_CLOSURE_FAIL``
+     - F-02 configuration dependency remains unresolved.
    * - ``NVME_APPLE``
        ``drivers/nvme/host/Kconfig:125-130``
      - ``OF && BLOCK``; ``APPLE_RTKIT && APPLE_SART``;
        ``ARCH_APPLE || COMPILE_TEST``
      - No enclosing Apple condition; selects ``NVME_CORE``
-     - ``CONFIG_CLOSURE_FAIL``
+     - F-02 configuration dependency remains unresolved.
    * - ``APPLE_PMGR_MISC``
        ``drivers/soc/apple/Kconfig:28-30``
      - ``PM``
      - ``ARCH_APPLE || COMPILE_TEST``; no select
-     - ``CONFIG_CLOSURE_FAIL``
+     - F-02 configuration dependency remains unresolved.
    * - ``APPLE_PMGR_PWRSTATE``
        ``drivers/pmdomain/apple/Kconfig:5-11``
      - ``PM``
      - ``ARCH_APPLE || COMPILE_TEST``; selects ``REGMAP``, ``MFD_SYSCON``,
        ``PM_GENERIC_DOMAINS``, and ``RESET_CONTROLLER``
-     - ``CONFIG_CLOSURE_FAIL``
+     - F-02 configuration dependency remains unresolved.
    * - ``ARCH_APPLE`` platform selection
        ``arch/arm64/Kconfig.platforms:36-40``
      - No declared ``depends on``
      - ``select APPLE_AIC``; ``select APPLE_PMGR_PWRSTATE if PM``;
        ``select HAVE_SHARED_GPIOS``
-     - ``CONFIG_CLOSURE_FAIL``
+     - F-02 configuration dependency remains unresolved.
 
 The effective report also records the framework symbols used by the selected
 source: ``CONFIG_PM``, ``CONFIG_OF``, ``CONFIG_BLOCK``,
@@ -1336,16 +1272,17 @@ source: ``CONFIG_PM``, ``CONFIG_OF``, ``CONFIG_BLOCK``,
 ``CONFIG_NVME_CORE``. ``CONFIG_MAILBOX`` is a framework/config-closure fact,
 not an invented ``depends on`` edge for ``APPLE_MAILBOX``. A module or built-in
 arrangement that fails the exact expressions, selected symbols, or required
-framework closure is ``CONFIG_CLOSURE_FAIL``; deferred-probe recovery cannot
-turn it into health.
+framework closure remains a blocked K-01 configuration result; deferred-probe
+recovery cannot turn it into health.
 
 There is a separate operational initialization order. It is evidence about
 runtime readiness and is not a Kconfig dependency graph: boot handoff, AIC,
 timers, CPU, console, clocks, pinctrl/GPIO, and DART precede subsystem probe;
-the Apple mailbox is ready before RTKit; RTKit is ready before SMC and Apple
-NVMe; SART is ready before Apple NVMe; and PMGR power-domain initialization is
-reported as its own branch. Each consumer records the prerequisite result and
-failure class. The document makes no additional dependency claim.
+the Apple mailbox is ready before RTKit; RTKit is ready before SMC; RTKit is
+ready before Apple NVMe; SART is ready before Apple NVMe; and PMGR power-domain
+initialization is reported as its own branch. Each consumer records the
+prerequisite result and failure class. The document makes no additional
+dependency claim.
 
 The operational order is deliberately conservative:
 
@@ -1382,15 +1319,18 @@ using a generic fallback.
 Promotion consumes only the equality-checked set of
 ``Trusted<PlatformManifest>.payload.document_id``,
 ``Trusted<PlatformManifest>.payload_digest``,
-``Trusted<PlatformManifest>.payload.board_id``,
+``Trusted<PlatformManifest>.payload.board_registry_digest``,
+``Trusted<PlatformManifest>.payload.board_targets[]``,
+``Trusted<BoardRegistry>.payload.boards[].board_id``,
 ``Trusted<PlatformManifest>.payload.components``;
 ``Trusted<QualificationRecord>.payload.document_id``,
 ``Trusted<QualificationRecord>.payload.board.board_id``,
 ``Trusted<QualificationRecord>.payload.manifest.manifest_id``, and
 ``Trusted<QualificationRecord>.payload.manifest.manifest_digest``. It also
-requires the exact ``Trusted<TrustContext>`` AuthorityRoleBinding for the
-promotion action. A local board ID, report digest, or promotion boolean cannot
-substitute for those equalities.
+requires the exact typed F-02 verifier result for the promotion action,
+provided through ``Trusted<TrustContext>`` and ``ExpectedContext``. A local
+board ID, report digest, or promotion boolean cannot substitute for those
+equalities.
 
 M1/M2 gold baseline (K-02)
 ---------------------------
@@ -1580,101 +1520,98 @@ coordinator approval. A family-level green build never promotes all boards in
 that family. A board remains below FULL while a physical feature is untested,
 unsafe, silently disabled, or coupled to an unqualified artifact.
 
-Kernel boot health: accepted boot-health/v1
--------------------------------------------
+Kernel boot health: F-02 boot-health/v1 dependency
+--------------------------------------------------
 
-The kernel reports only the frozen ``boot-health/v1``
-``Trusted<BootHealthCore>`` contract. It is
-a signed core and contains no success marker. The exact core payload paths are
+The kernel reports only the F-02 ``boot-health/v1``
+``Trusted<BootHealthCore>`` contract. It is a signed core and contains no
+success marker. Its exact additional payload fields are
+``board_id``, ``manifest_id``, ``manifest_digest``, ``profile_id``,
+``profile_digest``, ``lineage_id``, ``source_generation``, ``slot``,
+``attempt``, ``checks``, ``checks_digest``, ``success``, and ``fallback``.
+The exact leaves are
 ``Trusted<BootHealthCore>.payload.board_id``,
-``Trusted<BootHealthCore>.payload.manifest_document_id``,
-``Trusted<BootHealthCore>.payload.manifest_payload_digest``,
-``Trusted<BootHealthCore>.payload.slot``,
-``Trusted<BootHealthCore>.payload.generation``,
-``Trusted<BootHealthCore>.payload.lineage``,
-``Trusted<BootHealthCore>.payload.counter``,
+``Trusted<BootHealthCore>.payload.manifest_id``,
+``Trusted<BootHealthCore>.payload.manifest_digest``,
+``Trusted<BootHealthCore>.payload.profile_id``,
+``Trusted<BootHealthCore>.payload.profile_digest``,
+``Trusted<BootHealthCore>.payload.lineage_id``,
 ``Trusted<BootHealthCore>.payload.source_generation``,
-``Trusted<BootHealthCore>.payload.required_check_policy``,
-``Trusted<BootHealthCore>.payload.rollback_set``,
-``Trusted<BootHealthCore>.payload.checks``,
-``Trusted<BootHealthCore>.payload.failure_class``,
-``Trusted<BootHealthCore>.payload.retry_target``,
-``Trusted<BootHealthCore>.payload.fallback_target``,
-``Trusted<BootHealthCore>.payload.started_at``, and
-``Trusted<BootHealthCore>.payload.completed_at``. The core's manifest document
-ID and payload digest must equal the selected ``Trusted<PlatformManifest>``
-envelope.
+``Trusted<BootHealthCore>.payload.slot.slot_id``,
+``Trusted<BootHealthCore>.payload.slot.slot_generation``,
+``Trusted<BootHealthCore>.payload.slot.boot_artifact_digest``,
+``Trusted<BootHealthCore>.payload.attempt.counter``,
+``Trusted<BootHealthCore>.payload.attempt.started_at``,
+``Trusted<BootHealthCore>.payload.attempt.finished_at``,
+``Trusted<BootHealthCore>.payload.attempt.previous_slot``,
+``Trusted<BootHealthCore>.payload.attempt.boot_context_generation``,
+``Trusted<BootHealthCore>.payload.checks[]``,
+``Trusted<BootHealthCore>.payload.checks_digest``,
+``Trusted<BootHealthCore>.payload.success``,
+``Trusted<BootHealthCore>.payload.fallback.decision``,
+``Trusted<BootHealthCore>.payload.fallback.target_slot``,
+``Trusted<BootHealthCore>.payload.fallback.rollback_set_digest``, and
+``Trusted<BootHealthCore>.payload.fallback.failure_code``. The core's
+``manifest_id`` equals the selected platform manifest ``document_id`` and its
+``manifest_digest`` equals the verifier-computed platform-manifest
+``payload_digest``.
 
-The required checks and failed-attempt limit are not K-01 constants. They are
-resolved from the exact accepted manifest paths
-``Trusted<PlatformManifest>.payload.components.boot_stack.boot_health.required_checks``
-and
-``Trusted<PlatformManifest>.payload.components.boot_stack.boot_health.max_failed_attempts``.
-The rollback set is resolved from
-``Trusted<PlatformManifest>.payload.rollback.set``. The core copies the
-resulting policy IDs and digests into
-``Trusted<BootHealthCore>.payload.required_check_policy`` and
-``Trusted<BootHealthCore>.payload.rollback_set``; it does not edit the policy.
-Every required check entry has its manifest-defined ID, predicate, timeout,
-and policy digest. The observed ``Trusted<BootHealthCore>.payload.checks`` list
-must contain exactly those entries, with one of the manifest-enumerated results
-``PASS``, ``FAIL``, or ``TIMEOUT``. Missing, extra, duplicate, reordered, or
-unknown entries fail the record.
+The required checks and limits are not K-01 constants. They are resolved from
+the exact F-02 manifest path
+``Trusted<PlatformManifest>.payload.components.boot_stack.boot_check_profile``
+and its ``profile_id``, ``profile_digest``, ``required_check_ids[]``,
+``allowed_classes[]``, ``measurement_rules[]``, ``retry_limit``,
+``failure_limit``, and ``rollback_manifest_ids[]`` leaves. The rollback
+projection is resolved from
+``Trusted<PlatformManifest>.payload.rollback.last_known_good_required``,
+``manifest_ids[]``, ``artifact_ids[]``, ``minimum_retention``,
+``failure_attempt_limit``, and ``projection_digest``, together with every
+component's closed ``rollback`` coordinates. The core does not edit either
+manifest projection. Every required ``checks[]`` entry has the manifest
+profile's ID, class, measurement, and evidence digest, and its status is the
+F-02 value ``pass``, ``fail``, or ``not-run``. Missing, extra, duplicate,
+reordered, unknown, or laundered entries fail the record.
 
-The attempt counter is a persistent unsigned value in the manifest-defined
-encoding and lineage. It strictly increases for the selected board, manifest
-document ID, slot, generation, and source generation. A decrease, reset,
-unknown epoch, invalid jump, wrap, or counter-policy mismatch is
-``COUNTER_INVALID``. A recovery reset requires a separately authenticated
-transition naming the old counter, new counter, reason, recovery target, and
-source generation. The retry decision compares failed attempts with the exact
-``max_failed_attempts`` value from the selected manifest; it never substitutes
-a local numeric limit. The retry target must preserve board, manifest document
-ID, manifest payload digest, slot, generation, lineage, source generation,
-artifact set, required-check policy, and rollback set. When the manifest limit
-is exhausted, only its complete signed fallback target or recovery path may be
-selected.
+The attempt counter is persistent and strictly increases for the selected
+board, manifest, slot, slot generation, lineage, and source generation. A
+decrease, reset, invalid jump, wrap, or atomic-record failure uses the F-02
+``BOOT_COUNTER_FAILURE`` signal. A recovery transition is separately
+authenticated and names the old/new counter, reason, target, and source
+generation. Retry uses the exact manifest ``retry_limit`` or ``failure_limit``
+where applicable; it never substitutes a local numeric value. A retry or
+fallback preserves every F-02 core binding and may select only a slot and
+artifact set derived from the exact component rollback records.
 
 The optional success object is a separate authenticated
 ``boot-success-mark/v1`` ``Trusted<BootSuccessMark>`` payload. Its exact
 binding path to the core is ``Trusted<BootSuccessMark>.payload.core_digest``
 (the verifier-computed ``D_core``), plus
-``Trusted<BootSuccessMark>.payload.board_id``,
-``Trusted<BootSuccessMark>.payload.manifest_document_id``,
-``Trusted<BootSuccessMark>.payload.manifest_payload_digest``,
-``Trusted<BootSuccessMark>.payload.slot``,
-``Trusted<BootSuccessMark>.payload.generation``,
-``Trusted<BootSuccessMark>.payload.lineage``,
-``Trusted<BootSuccessMark>.payload.counter``,
-``Trusted<BootSuccessMark>.payload.source_generation``,
-``Trusted<BootSuccessMark>.payload.required_check_policy_digest``, and
-``Trusted<BootSuccessMark>.payload.rollback_set_digest``. It contains no
-authority to change those values. The verifier recomputes
-``Trusted<BootSuccessMark>.payload.required_check_policy_digest`` from the
-exact
-``Trusted<PlatformManifest>.payload.components.boot_stack.boot_health.required_checks``
-policy and recomputes
-``Trusted<BootSuccessMark>.payload.rollback_set_digest`` from the exact
-``Trusted<PlatformManifest>.payload.rollback.set``. The verifier also
-recomputes ``D_core`` from the canonical ``Trusted<BootHealthCore>`` payload
-before comparing it with
-``Trusted<BootSuccessMark>.payload.core_digest``. A success mark is valid only
-after every manifest-derived required check is ``PASS`` and the core and mark
-signatures, expiry, and replay identity verify. Embedding a success marker in
-the core, trusting a boolean, or accepting a mark with any mismatched binding
-is ``BOOT_HEALTH_INTEGRITY_FAIL``.
+``payload.board_id``, ``payload.manifest_id``, ``payload.manifest_digest``,
+``payload.profile_id``, ``payload.profile_digest``, ``payload.lineage_id``,
+``payload.source_generation``, ``payload.slot_id``,
+``payload.slot_generation``, ``payload.attempt_counter``,
+``payload.marker_generation``, ``payload.marked_at``,
+``payload.checks_digest``, ``payload.rollback_set_digest``, and
+``payload.marker_replay_id``. It contains no authority to change those
+values. The verifier recomputes the profile digest from the exact
+``boot_check_profile`` and the rollback-set digest from the exact component
+rollback records and manifest rollback projection. It also recomputes
+``D_core`` before comparing it with ``core_digest``. A success mark is valid
+only after every manifest-derived required check is ``pass`` and the core and
+mark signatures, expiry, and replay identity verify. Embedding a success
+marker in the core, trusting a boolean, or accepting a mark with any
+mismatched binding uses the F-02 boot hold/reject signals.
 
-The failure classes are ``IDENTITY``, ``DTB_INTEGRITY``, ``CONFIG``,
-``FIRMWARE_ABI``, ``STORAGE``, ``HEALTH_TIMEOUT``, ``KERNEL_FATAL``,
-``INTEGRITY``, and ``INFRASTRUCTURE``. Unknown classes, schema versions,
-counter encodings, reset records, policy IDs, check IDs, mark presence, core
-digest, or marker verification state are failures, not warnings. Every failed
-attempt, retry, fallback, and recovery
-action is retained. The kernel owns observed results and the core report; the
-health authority signs the optional mark; the boot/recovery authority selects
-the manifest-defined slot; and the coordinator owns acceptance. K-01 cannot
-claim boot health when the accepted schemas, policy, persistence, key, exact
-bindings, or recovery target are unavailable.
+Boot failures use only the F-02 ``FailureCode`` vocabulary. The six boot HOLD
+codes are ``BOOT_MARKER_AUTH_FAILURE``, ``BOOT_CONTEXT_MISMATCH``,
+``BOOT_COUNTER_FAILURE``, ``BOOT_REQUIRED_CHECK_FAILURE``,
+``BOOT_FALLBACK_FAILURE``, and ``TRUST_BOUNDARY_FAILURE``; all other F-02
+codes are reject decisions. Unknown classes, schema versions, counter
+encodings, reset records, policy IDs, check IDs, mark presence, core digest,
+or marker verification state are failures, not warnings. Every failed
+attempt, retry, fallback, and recovery action is retained. K-01 cannot claim
+boot health when the F-02 schema, policy, persistence, trusted source, exact
+bindings, or recovery target is unavailable.
 
 Bisectability and regression handling
 -------------------------------------
@@ -1717,155 +1654,117 @@ host-only, target-emulated, and physical results.
 Named ownership and approvals
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Owner and CI authority resolves only through the common closed
-``AuthorityRoleBinding`` records in ``Trusted<TrustContext>`` supplied by
-F-03. K-01 neither defines nor consumes an owners registry. For every gate,
-the resolver selects the exact binding whose role, scope, key, policy, expiry,
-and signature authorize the exact manifest document ID, board ID, profile,
-artifact set, report, or promotion action.
+Ownership, signatures, and approvals are not a K-01 schema. The only authority
+input is the exact typed ``Trusted<TrustContext>`` supplied by F-03 and the
+typed ``ExpectedContext`` supplied to the common F-02 verifier. K-01 consumes
+the one external seam:
 
-.. list-table:: AuthorityRoleBinding checks
-   :header-rows: 1
-   :widths: 24 40 36
+.. code-block:: text
 
-   * - Check
-     - Canonical binding member
-     - Fail-closed rule
-   * - Role
-     - ``Trusted<TrustContext>.payload.authority_bindings[].role``
-     - The exact enum is ``linux-queue``, ``kernel-config``, ``dt-binding``,
-       ``board-identity``, ``firmware-abi``, ``boot-artifact``, ``boot-health``,
-       ``ci-toolchain``, ``docs``, ``physical-lab``, ``recovery``,
-       ``release``, or ``coordinator``; a team label or unassigned role is not
-       an authority.
-   * - Scope
-     - ``Trusted<TrustContext>.payload.authority_bindings[].scope.manifest_document_id``;
-       ``Trusted<TrustContext>.payload.authority_bindings[].scope.board_id``;
-       ``Trusted<TrustContext>.payload.authority_bindings[].scope.profile_id``;
-       ``Trusted<TrustContext>.payload.authority_bindings[].scope.artifact_id``;
-       ``Trusted<TrustContext>.payload.authority_bindings[].scope.report_id``;
-       ``Trusted<TrustContext>.payload.authority_bindings[].scope.gate_action``
-     - Every scope member must equal the requested manifest document ID,
-       board/profile, artifact, report, and gate action; an omitted or wildcard
-       member is unknown and rejects the binding.
-   * - Key
-     - ``Trusted<TrustContext>.payload.authority_bindings[].key_id``;
-       ``Trusted<TrustContext>.payload.authority_bindings[].signature``
-     - Key must be active, pinned by the trust context, and verify the signed
-       approval; an unknown or expired key rejects the gate.
-   * - Policy
-     - ``Trusted<TrustContext>.payload.authority_bindings[].policy_id``;
-       ``Trusted<TrustContext>.payload.authority_bindings[].policy_digest``;
-       ``Trusted<TrustContext>.payload.authority_bindings[].threshold``;
-       ``Trusted<TrustContext>.payload.authority_bindings[].required_roles[]``;
-       ``Trusted<TrustContext>.payload.authority_bindings[].separation_groups[]``
-     - Policy ID and digest must equal the F-03 threshold policy for that gate;
-       the threshold, required roles, and separation groups are read from the
-       same signed TrustContext, never from the caller.
-   * - Binding validity
-     - ``Trusted<TrustContext>.payload.authority_bindings[].subject``;
-       ``Trusted<TrustContext>.payload.authority_bindings[].expires_at``;
-       ``Trusted<TrustContext>.payload.authority_bindings[].replay_identity``;
-       ``Trusted<TrustContext>.payload.authority_bindings[].signature``
-     - Subject, expiry, replay identity, and signature must verify under the
-       closed trust context.
-   * - Threshold and separation
-     - ``Trusted<TrustContext>.payload.authority_bindings[].approval_id``;
-       ``Trusted<OwnerApproval>.payload.approval_id``;
-       ``Trusted<OwnerApproval>.payload.manifest_document_id``;
-       ``Trusted<OwnerApproval>.payload.manifest_payload_digest``
-     - Required distinct roles and approval threshold must be met; the same
-       key cannot satisfy a separation-of-duties requirement. ``approval_id``
-       must resolve to the separately authenticated ``owner-approval/v1``
-       payload and its manifest document ID and payload digest must match the
-       binding scope.
+   verify(Canonical<T>, Trusted<TrustContext>, VerifiedClock,
+          ExpectedContext) -> Trusted<T> | TrustError
+   admit(Trusted<T>, Admitted<Policy>) -> Admitted<T> | AdmissionError
 
-K-01 requires the F-03 bindings for Linux queue, config, DT binding, board
-identity, firmware ABI, boot artifact, boot health, CI/toolchain, docs, lab,
-recovery, and coordinator promotion. The queue/config actions require the
-Linux and release roles; DT actions require DT and board-identity roles;
-firmware and boot-health actions require firmware, health, and recovery roles;
-documentation actions require the docs role; and physical promotion requires
-lab and coordinator roles. Missing, ambiguous, out-of-scope, expired,
-unverified, or insufficient bindings produce ``OWNER_BLOCK`` and keep K-01 in
-``FAIL_CLOSED``.
+The F-02 exhaustive signing table selects the payload type, domain, context,
+signer role, and complete expected scope. K-01 neither repeats that table nor
+defines role, scope, key, threshold, approval, or owner-record fields. CI and
+promotion ownership remain external orchestration inputs. F-03/F-02 are
+currently rejected and no accepted trust context is present, so every K-01
+authority-dependent gate remains ``FAIL_CLOSED``. A wrong role or scope uses
+``SIGNATURE_CONTEXT_MISMATCH``; an absent, invalid, or untrusted authority uses
+``TRUST_FAILURE`` or ``TRUST_BOUNDARY_FAILURE``; stale or replayed material
+uses ``EXPIRY_OR_REPLAY_FAILURE``. No local authority or rejection namespace
+may override those F-02 results.
 
 Static and build gates
 ~~~~~~~~~~~~~~~~~~~~~~
 
 The toolchain is pinned by
 ``Trusted<PlatformManifest>.payload.components.linux_kernel.toolchain_lock``;
-its recipe identity and digest are not inferred from a host. The signed lock
-names the compiler and exact version/digest (GCC or Clang/LLVM), Rust compiler
-and LLVM when Rust is used, ``dtc`` version/digest, dt-schema version/digest,
-Python version, Sphinx version/digest, host/container image digest, locale,
-working-directory policy, and relevant make variables. A version range,
-unpinned package install, or host fallback creates a new tuple or produces
-``TOOLING_BLOCK``.
+its exact F-02 fields are ``mode``, ``entries[].toolchain_id``,
+``entries[].toolchain_version``, ``entries[].toolchain_digest``,
+``entries[].flags_digest``, and ``lock_digest``. Recipe details, host/container
+identity, locale, working-directory policy, make variables, and command arrays
+are not F-02 component leaves. A version range, unpinned package install, or
+host fallback creates an unresolved K-01 tuple and cannot authorize a gate.
 
-For every queue tip and relevant commit, CI executes the complete argv arrays
-at the following canonical paths, byte-for-byte and without shell expansion:
+For every queue tip and relevant commit, proposed CI must execute complete argv
+arrays without shell expansion. The rejected F-02 snapshot defines no
+component ``command_arrays`` path, so the following is a K-01 CI interface
+proposal, not a canonical manifest path:
 
-.. list-table:: Lock-derived K-01 command arrays
+.. list-table:: Proposed K-01 CI command arrays
    :header-rows: 1
    :widths: 25 55 20
 
    * - Gate
-     - Canonical argv path
+     - External K-01 CI argv key
      - Required target
    * - Config closure
-     - ``Trusted<PlatformManifest>.payload.components.linux_kernel.toolchain_lock.command_arrays.olddefconfig``
+     - ``k01-ci/argv/olddefconfig``
      - ``olddefconfig``
    * - DTB build
-     - ``Trusted<PlatformManifest>.payload.components.linux_kernel.toolchain_lock.command_arrays.dtbs``
+     - ``k01-ci/argv/dtbs``
      - ``dtbs``
    * - DTB schema check
-     - ``Trusted<PlatformManifest>.payload.components.linux_kernel.toolchain_lock.command_arrays.dtbs_check``
+     - ``k01-ci/argv/dtbs_check``
      - ``dtbs_check``
    * - AGX binding check
-     - ``Trusted<PlatformManifest>.payload.components.linux_kernel.toolchain_lock.command_arrays.dt_binding_check``
+     - ``k01-ci/argv/dt_binding_check``
      - ``dt_binding_check``
    * - Warning build
-     - ``Trusted<PlatformManifest>.payload.components.linux_kernel.toolchain_lock.command_arrays.warning_build``
+     - ``k01-ci/argv/warning_build``
      - ``W=1`` build
    * - Patch validation
-     - ``Trusted<PlatformManifest>.payload.components.linux_kernel.toolchain_lock.command_arrays.checkpatch``
+     - ``k01-ci/argv/checkpatch``
      - ``scripts/checkpatch.pl``
    * - Documentation
-     - ``Trusted<PlatformManifest>.payload.components.linux_kernel.toolchain_lock.command_arrays.docs``
+     - ``k01-ci/argv/docs``
      - documentation and RST/toctree check
    * - Reproducibility
-     - ``Trusted<PlatformManifest>.payload.components.linux_kernel.toolchain_lock.command_arrays.reproducible_build``
+     - ``k01-ci/argv/reproducible_build``
      - clean rebuild comparison
 
-Each referenced value is a non-empty closed JSON array of complete argument
-strings. The array itself supplies the cross-compiler assignment, schema-file
-assignment, Sphinx executable, output policy, and every other variable; no
-caller may append arguments or provide a host value. The config array consumes
-the locked fragment; the DT arrays cover every Apple DTB in the manifest's
-explicit inventory, and the binding array names
+Each future referenced value must be a non-empty closed array of complete
+argument strings. The array itself supplies the cross-compiler assignment,
+schema-file assignment, Sphinx executable, output policy, and every other
+variable; no caller may append arguments or provide a host value. The config
+array consumes the locked fragment; the DT arrays cover every Apple DTB in the
+manifest's explicit inventory, and the binding array names
 ``Documentation/devicetree/bindings/gpu/apple,agx.yaml``. The runner verifies
 the normalized config digest, required built-in/module decisions, initramfs
 closure, sorted JSON warning output, and the pinned zero-warning or reviewed
-warning baseline.
+warning baseline only after an accepted schema and executable CI consumer
+exist.
 
 The report lock at
 ``Trusted<PlatformManifest>.payload.components.linux_kernel.report_lock`` pins
-the report contract. Its closed ``schemas[]`` list is exactly
-``linux-k01-config-report/v1``, ``linux-k01-dtb-report/v1``,
-``linux-k01-provenance-report/v1``, ``linux-k01-docs-report/v1``,
-``linux-k01-reproducibility-report/v1``, and
-``linux-k01-boot-health-report/v1``, ``linux-k01-mesa-report/v1``, and
-``linux-k01-qualification-report/v1``. Its ``status_values`` list is exactly
-``PASS``, ``FAIL``, ``TOOLING_BLOCK``, and ``UNKNOWN``; skipped, advisory,
-partial, or locally invented statuses do not pass a gate. Its
-``retention`` is append-only, access-audited retention for the life of the
-support program plus seven years. Its ``expected_artifacts[]`` set is exactly
-``kernel_image``, ``kernel_modules``, ``initramfs``, ``dtb_set``,
-``binding_schemas``, ``platform_manifest``, ``signatures``, ``reports``,
-``raw_logs``, ``reproducibility_diff``, ``firmware_bundle``, ``boot_artifacts``,
-``mesa_artifacts``, ``userspace``, ``rollback_set``, and
-``dtb_mutation_envelopes``.
+only the F-02 fields ``mode``, ``entries[].report_id``,
+``entries[].report_kind``, ``entries[].report_digest``,
+``entries[].producer_toolchain_digest``, and ``lock_digest``. The following
+K-01 report schemas, statuses, and expected artifacts are proposed CI report
+content, not additional F-02 component fields:
+
+* report schemas are
+  ``linux-k01-config-report/v1``, ``linux-k01-dtb-report/v1``,
+  ``linux-k01-provenance-report/v1``, ``linux-k01-docs-report/v1``,
+  ``linux-k01-reproducibility-report/v1``, and
+  ``linux-k01-boot-health-report/v1``, ``linux-k01-mesa-report/v1``, and
+  ``linux-k01-qualification-report/v1``;
+* proposed report status labels are exactly
+  ``PASS``, ``FAIL``, ``TOOLING_BLOCK``, and ``UNKNOWN``; skipped, advisory,
+  partial, or locally invented statuses do not pass a gate. Its retention is
+  append-only, access-audited retention for the life of the support program
+  plus seven years. Its expected artifact set is exactly
+  ``kernel_image``, ``kernel_modules``, ``initramfs``, ``dtb_set``,
+  ``binding_schemas``, ``platform_manifest``, ``signatures``, ``reports``,
+  ``raw_logs``, ``reproducibility_diff``, ``firmware_bundle``, ``boot_artifacts``,
+  ``mesa_artifacts``, ``userspace``, ``rollback_set``, and
+  ``dtb_mutation_envelopes``.
+
+Those report labels are not F-02 ``FailureCode`` values and cannot be used as
+authority outcomes. An unavailable tool or absent report remains a blocked
+K-01 CI result until the external schema and consumer are accepted.
 
 Each required status check has one report schema and one canonical result
 path: ``manifest-contract`` and ``provenance-and-signatures`` use
@@ -1888,7 +1787,7 @@ Every command publishes the selected report schema, status, source commit,
 ``Trusted<PlatformManifest>.payload_digest``, board/profile scope, the exact
 argv array and environment lock, toolchain recipe digest, start/end time,
 exit code, stdout/stderr digests, input/output artifact digests, warning
-baseline ID, and AuthorityRoleBinding approval IDs. A non-zero command,
+  baseline ID, and the exact typed verifier-context result. A non-zero command,
 missing report or expected artifact, digest mismatch, unpinned tool, unknown
 status, owner/policy gap, unexplained warning, retention failure, conflict
 marker, or inability to reproduce the locked output blocks its status and all
@@ -1906,6 +1805,76 @@ missing report/artifact, unpinned tool, unknown result, owner/approval gap,
 unexplained warning, or retention failure blocks the corresponding status and
 all dependent promotion. Advisory or skipped jobs never satisfy a required
 check; unavailable host tooling is reported as ``TOOLING_BLOCK``.
+
+Correction-round hostile specification probes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The following variants are scratch-only design probes. They record the exact
+F-02 specification signal that a future parser, verifier, or consumer must
+produce; they are not evidence that an executable validator exists. Every
+variant is rejected before a partial trusted value or successful gate can be
+returned.
+
+.. list-table:: Hostile correction probes
+   :header-rows: 1
+   :widths: 25 38 37
+
+   * - Planted variant
+     - Scratch mutation
+     - Exact F-02 rejection signal
+   * - Path drift
+     - Rename an exact component path to an unlisted alias or add an alternate
+       manifest identity path.
+     - ``UNKNOWN_FIELD`` at the first unknown path.
+   * - Omitted component leaf
+     - Remove a required component source, lock, artifact, rollback, relation,
+       firmware schema, DT schema, or boot profile member.
+     - ``PARSE_SCHEMA_FAILURE`` at the missing member.
+   * - Typed digest substitution
+     - Put a valid digest from another typed artifact, source, policy, or
+       schema into the selected field.
+     - ``CROSS_DOCUMENT_MISMATCH`` at the first unequal bound field.
+   * - Wrong signer or scope
+     - Use a valid signer with the wrong payload row, domain, context, role, or
+       expected scope.
+     - ``SIGNATURE_CONTEXT_MISMATCH`` at the first signer/context/scope path.
+   * - Stale or replayed evidence
+     - Reuse an expired envelope, nonce, replay ID, source generation, or
+       already-consumed marker.
+     - ``EXPIRY_OR_REPLAY_FAILURE`` at the expiry or replay path.
+   * - Cross-board or cross-manifest evidence
+     - Transplant a board predicate, manifest document ID/digest, or
+       qualification binding from another tuple.
+     - ``CROSS_DOCUMENT_MISMATCH`` at the first identity binding.
+   * - Unknown failure code
+     - Add an unlisted failure code or duplicate a code with a second meaning.
+     - ``PARSE_SCHEMA_FAILURE`` at the code-table entry.
+   * - Malformed boot health
+     - Omit/duplicate/reorder a required check, use an unknown class/status,
+       change the profile or counter binding, or accept a marker without the
+       matching core digest.
+     - ``BOOT_REQUIRED_CHECK_FAILURE``, ``BOOT_CONTEXT_MISMATCH``,
+       ``BOOT_COUNTER_FAILURE``, or ``BOOT_MARKER_AUTH_FAILURE`` at the first
+       applicable path.
+   * - DTB/firmware transplant
+     - Replace ``firmware_bundle_identity`` or ``dt_schema_identity`` with a
+       valid identity from another board, manifest, or DTB tuple.
+     - ``CROSS_DOCUMENT_MISMATCH`` at the first identity digest.
+   * - DTB mutation replay or mutation drift
+     - Change nonce domain/digest, before/after digest, operation order, path,
+       or an allowlisted property after signing.
+     - ``EXPIRY_OR_REPLAY_FAILURE``, ``UNKNOWN_MUTATION``, or
+       ``DTB_INPUT_VERIFICATION_FAILURE`` at the first differing path.
+   * - Partial CI
+     - Remove a generated binding/output entry, alter its digest, omit a
+       required report/artifact, or present an unavailable tool as success.
+     - ``BINDING_INTEGRITY_FAILURE`` or a blocked K-01 CI result; no promotion.
+
+These probes were planted and checked in temporary copies only. Because the
+F-02 snapshot has no executable parser, verifier, generated consumer binding,
+or CI runner, the observed result is a specification mapping and not runtime
+guard evidence. The future implementation must reproduce the same code and
+first-path signals.
 
 KUnit and kselftest
 ~~~~~~~~~~~~~~~~~~~
@@ -1934,10 +1903,12 @@ implementation is not LAVA. Each job names:
   power controller, serial/log channel, peripherals, and firmware baseline;
 * ``Trusted<PlatformManifest>.payload.document_id`` and
   ``Trusted<PlatformManifest>.payload_digest``, kernel/config/DTB/Mesa/
-  boot-artifact digests, ``Trusted<PlatformManifest>.payload.components.boot_stack.slots``,
-  ``Trusted<PlatformManifest>.payload.components.boot_stack.boot_health``, boot
-  arguments, expected root device, timeout, retry policy, and
-  ``Trusted<PlatformManifest>.payload.rollback.last_known_good``;
+  boot-artifact digests,
+  ``Trusted<PlatformManifest>.payload.components.boot_stack.boot_check_profile``,
+  ``Trusted<BootHealthCore>.payload.slot``,
+  ``Trusted<BootHealthCore>.payload.attempt``, boot arguments, expected root
+  device, timeout, retry policy, and
+  ``Trusted<PlatformManifest>.payload.rollback``;
 * ``Trusted<QualificationRecord>.payload.document_id``,
   ``Trusted<QualificationRecord>.payload.board.board_id``,
   ``Trusted<QualificationRecord>.payload.manifest.manifest_id``,
@@ -2013,59 +1984,70 @@ member name is an alternate authority:
      - Required coupling
      - Failure behavior
    * - Kernel
-     - ``Trusted<PlatformManifest>.payload.components.linux_kernel.source_patch_queue``;
+     - ``Trusted<PlatformManifest>.payload.components.linux_kernel.source``;
        ``Trusted<PlatformManifest>.payload.components.linux_kernel.toolchain_lock``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.config_lock``;
+       ``Trusted<PlatformManifest>.payload.components.linux_kernel.config_inputs[]``;
+       ``Trusted<PlatformManifest>.payload.components.linux_kernel.patch_lock``;
+       ``Trusted<PlatformManifest>.payload.components.linux_kernel.report_lock``;
        ``Trusted<PlatformManifest>.payload.components.linux_kernel.artifacts[]``
-     - Refuse promotion if source/config/artifact provenance is incomplete.
+     - Refuse promotion if source/config/artifact provenance is incomplete;
+       detailed queue and config records remain unresolved F-02 inputs.
    * - Device tree
      - ``Trusted<PlatformManifest>.payload.components.dtb_set.source``;
-       ``Trusted<PlatformManifest>.payload.components.dtb_set.binding_schema``;
-       ``Trusted<PlatformManifest>.payload.components.dtb_set.abi``;
+       ``Trusted<PlatformManifest>.payload.components.dtb_set.config_inputs[]``;
+       ``Trusted<PlatformManifest>.payload.components.dtb_set.dt_schema``;
        ``Trusted<PlatformManifest>.payload.components.dtb_set.artifacts[]``;
-       ``Trusted<PlatformManifest>.payload.identity_match``
+       ``Trusted<PlatformManifest>.payload.board_registry_digest``;
+       ``Trusted<PlatformManifest>.payload.board_targets[]``;
+       ``Trusted<BoardRegistry>.payload.boards[].identity_match``
      - Refuse boot-health success when identity or ABI is inconsistent.
    * - Firmware
-     - ``Trusted<PlatformManifest>.payload.components.firmware_bundle.bundle``;
-       ``Trusted<PlatformManifest>.payload.components.firmware_bundle.abi``;
-       ``Trusted<PlatformManifest>.payload.components.firmware_bundle.tuning``;
-       ``Trusted<PlatformManifest>.payload.compatibility_relations[]``
+     - ``Trusted<PlatformManifest>.payload.components.firmware_bundle.source``;
+       ``Trusted<PlatformManifest>.payload.components.firmware_bundle.provenance``;
+       ``Trusted<PlatformManifest>.payload.components.firmware_bundle.firmware_schema``;
+       ``Trusted<PlatformManifest>.payload.components.firmware_bundle.artifacts[]``;
+       ``Trusted<PlatformManifest>.payload.compatibility``
      - Required client failure blocks capability and promotion.
    * - Human boot artifact
      - ``Trusted<PlatformManifest>.payload.components.boot_stack.source``;
-       ``Trusted<PlatformManifest>.payload.components.boot_stack.abi``;
+       ``Trusted<PlatformManifest>.payload.components.boot_stack.abi_contract_id``;
        ``Trusted<PlatformManifest>.payload.components.boot_stack.artifacts[]``;
-       ``Trusted<PlatformManifest>.payload.components.boot_stack.slots``;
-       ``Trusted<PlatformManifest>.payload.components.boot_stack.boot_health``
+       ``Trusted<PlatformManifest>.payload.components.boot_stack.boot_check_profile``;
+       ``Trusted<BootHealthCore>.payload.slot``;
+       ``Trusted<BootHealthCore>.payload.fallback``
      - Kernel reports the observed handoff; it does not inspect the source
        repository or substitute an unqualified artifact.
    * - Mesa
      - ``Trusted<PlatformManifest>.payload.components.mesa_stack.source``;
-       ``Trusted<PlatformManifest>.payload.components.mesa_stack.abi``;
+       ``Trusted<PlatformManifest>.payload.components.mesa_stack.abi_contract_id``;
        ``Trusted<PlatformManifest>.payload.components.mesa_stack.artifacts[]``;
-       ``Trusted<PlatformManifest>.payload.compatibility_relations[]``
+       ``Trusted<PlatformManifest>.payload.compatibility``
      - No GPU/display PASS with an arbitrary Mesa build.
    * - Userspace/initramfs
-     - ``Trusted<PlatformManifest>.payload.components.linux_kernel.abi``;
-       ``Trusted<PlatformManifest>.payload.components.linux_kernel.config_lock.initramfs_module_closure[]``;
+     - ``Trusted<PlatformManifest>.payload.components.linux_kernel.abi_contract_id``;
+       ``Trusted<PlatformManifest>.payload.components.linux_kernel.config_inputs[]``;
+       ``Trusted<PlatformManifest>.payload.components.linux_kernel.packages[]``;
        ``Trusted<PlatformManifest>.payload.package_set``;
        ``Trusted<PlatformManifest>.payload.artifacts[]``
-     - Missing required userspace/firmware is an honest failure, not a warning.
+     - Missing required userspace/firmware is an honest failure, not a warning;
+       detailed initramfs closure remains the unresolved F-02 config dependency.
 
 The boot-artifact handoff must expose enough authenticated data for the kernel
-to verify the exact
-``Trusted<PlatformManifest>.payload.identity_match`` and
-``Trusted<PlatformManifest>.payload.components.dtb_set.source`` tuple,
-``Trusted<DtbMutationEnvelope>.payload.dtb.before_digest``,
-``Trusted<DtbMutationEnvelope>.payload.dtb.after_digest``,
-``Trusted<DtbMutationEnvelope>.payload.manifest_document_id``,
-``Trusted<DtbMutationEnvelope>.payload.manifest_payload_digest``,
-``Trusted<DtbMutationEnvelope>.payload.firmware.schema``, and the manifest's
-``Trusted<PlatformManifest>.payload.components.boot_stack.boot_health`` slot
-context. Memory reservations, boot arguments, console/debug transport, and
-DTB location are evidence fields under the same authenticated handoff; they
-cannot override the manifest or mutation envelope. The details and
-implementation remain with the qualified human owner.
+to verify the exact selected
+``Trusted<BoardRegistry>.payload.boards[].identity_match`` record,
+``Trusted<PlatformManifest>.payload.components.dtb_set.source`` and
+``dt_schema`` tuple,
+``Trusted<DtbMutationEnvelope>.payload.pre_mutation_dtb_digest``,
+``Trusted<DtbMutationEnvelope>.payload.post_mutation_dtb_digest``,
+``Trusted<DtbMutationEnvelope>.payload.platform_manifest_document_id``,
+``Trusted<DtbMutationEnvelope>.payload.platform_manifest_payload_digest``,
+``Trusted<DtbMutationEnvelope>.payload.firmware_bundle_identity``,
+``Trusted<DtbMutationEnvelope>.payload.dt_schema_identity``, and the
+``Trusted<BootHealthCore>.payload.slot`` context. Memory reservations, boot
+arguments, console/debug transport, and DTB location are evidence fields under
+the same authenticated handoff; they cannot override the manifest, boot core,
+or mutation envelope. The details and implementation remain with the
+qualified human owner.
 
 For graphics, the kernel AGX driver and Mesa must agree on GPU generation,
 firmware compatibility, shared memory structures, reset behavior, page size,
@@ -2085,6 +2067,19 @@ or promotion, not invitations to guess.
 Explicit unknowns
 ~~~~~~~~~~~~~~~~~
 
+* The supplied F-02 snapshot at ``c315c7e79928d0041deb582bed79a61074361b21``
+  is independently rejected and frozen. Its paths are a provisional external
+  dependency, not accepted canonical authority; F-03 trust context and
+  authority policy are likewise unsettled. K-01 remains ``FAIL_CLOSED``.
+* No executable F-02 schema package, code generator, generated Python/Swift/
+  Rust binding, validator, accepted/hostile fixture runner, consumer guard, or
+  CI workflow is present in this design lane. The command arrays, report
+  statuses, and detailed queue/config/firmware evidence above are design
+  requirements only.
+* This checkout is intentionally not clean: exactly 13 modified paths outside
+  this owned RST belong to another lane. They are not read, staged, tested
+  through, or altered by this correction. No clean-checkout closure is claimed.
+  A clean isolated checkout and the executable gates remain required.
 * The exact A18 Pro, M5, and M6 Apple SoC IDs, target types, board IDs, DT
   compatible strings, memory topologies, and firmware schemas are not in the
   current kernel DT inventory.
@@ -2095,15 +2090,16 @@ Explicit unknowns
   later GPU generations, including whether a different graphics driver is
   required, is not decided here.
 * The accepted F-02 document, signed context, concrete component records, and
-  evidence are not present in this design lane, but their required paths and
-  relation vocabulary are frozen above. Any absent queue, config, DTB,
+  evidence are not present in this design lane. Any absent queue, config, DTB,
   firmware, boot, Mesa, artifact, ABI, or rollback record remains a
-  fail-closed candidate gap.
+  fail-closed candidate gap; the provisional path mapping above does not
+  close that dependency.
 * The relationship between the DT's ``apple,firmware-abi`` property, the
   driver's ``apple,firmware-compat`` property, bootloader overwrites, and the
   release firmware record is an implementation evidence gap. It must be
-  represented by the accepted typed entries in
-  ``Trusted<PlatformManifest>.payload.compatibility_relations[]``; an unknown
+  represented by the accepted typed entries in the owning component's
+  ``compatibility_relations[]`` and the exact top-level
+  ``Trusted<PlatformManifest>.payload.compatibility`` projection; an unknown
   relation is quarantined rather than frozen later or inferred.
 * Board-specific thermal limits, fan curves, idle-drain budgets, speaker
   protection measurements, and acceptable dmesg allowlists require physical
@@ -2164,10 +2160,10 @@ acceptance gates, not completed work.
      - Upstream-sync policy, minimal queue, config/ABI contract, DT layout,
        firmware boundary, debug profiles, ownership, dependencies, boot-health
        contract, and CI/docs contract approved.
-     - Accepted F-02 manifest and F-03 ``Trusted<TrustContext>``
-       ``AuthorityRoleBinding`` context, exact source/config/DTB/firmware/
-       boot/Mesa tuple report, AGX warning census resolution, named approvals,
-       reproducible reconstruction, and no untracked interface authority.
+     - Accepted F-02 manifest and F-03 ``Trusted<TrustContext>`` verifier
+       context, exact source/config/DTB/firmware/boot/Mesa tuple report, AGX
+       warning census resolution, named approvals, reproducible
+       reconstruction, and no untracked interface authority.
    * - K-02
      - M1/M2 gold tuple is repeatable and bisectable.
      - Physical board records, complete applicable test rows, exact tuple
@@ -2190,6 +2186,7 @@ acceptance gates, not completed work.
      - Shipping hardware, recovery capability, manifest tuple, and immutable
        physical evidence; marketing announcements do not substitute.
 
-Until those evidence packages exist, every K-slice remains TODO or in design.
+Until those evidence packages exist, every K-slice remains incomplete or in
+design.
 This file records the plan only; it does not promote a board, kernel, DTB,
 firmware, Mesa build, or release.
