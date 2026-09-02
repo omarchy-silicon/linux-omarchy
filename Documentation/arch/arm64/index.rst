@@ -24,6 +24,7 @@ ARM64 Architecture
     memory-tagging-extension
     mops
     mpam
+    omarchy-silicon-bringup
     perf
     pointer-authentication
     ptdump
