@@ -1,3 +1,14 @@
+Omarchy Silicon downstream
+==========================
+
+This repository is the Omarchy Silicon downstream Linux kernel and board-specific patch queue for Apple Silicon Macs. It targets all present and future Apple M-series chips and materially distinct boards or hardware profiles and is in active development.
+
+No Apple Silicon board is currently supported or qualified, and there is no supported Omarchy Silicon release. A chip name, source-tree change, successful build, boot, or test is not support or qualification evidence. Support requires exact board-level evidence covering the board and SoC, device tree, firmware, boot chain, graphics, installer and rollback, release artifact, and physical qualification.
+
+The Linux kernel guidance below remains the inherited upstream development and contribution guidance. Omarchy Silicon changes and coordination should use the central project channels: Issues at https://github.com/omarchy-silicon/omarchy-apple-platform/issues and Discussions at https://github.com/omarchy-silicon/omarchy-apple-platform/discussions. Report security vulnerabilities through the private advisory form at https://github.com/omarchy-silicon/omarchy-apple-platform/security/advisories/new, never in public issues or discussions.
+
+Inherited Linux kernel code, documentation, copyrights, and licensing remain in force; see COPYING and the upstream notices in this tree. Omarchy-specific work in this downstream repository does not by itself establish support, qualification, or release readiness.
+
 Linux kernel
 ============
 
